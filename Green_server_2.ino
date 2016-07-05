@@ -1,4 +1,5 @@
 #include <DHT.h>
+#include <L3G.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <LiquidCrystal_I2C.h>
@@ -6,6 +7,9 @@
 #include <VirtualWire.h>
 #include <UIPEthernet.h>
 #include <BH1750FVI.h>
+#include <Adafruit_BMP085_U.h>
+#include <Adafruit_ADXL345_U.h>
+#include <Adafruit_HMC5883_U.h>
 
 // LED pin
 #define LED_PIN      13
@@ -52,16 +56,22 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define REC_UPDATE_TIME 50
 
 // Period of reset flags for radio sensors
-#define RADIORESET_UPDATE_TIME 300000
+#define RADIORESET_UPDATE_TIME 600000
 
 // Period of send data to IoT server
-#define IOT_UPDATE_TIME 60000
+#define IOT_UPDATE_TIME 300000
+
+// Period of read BMP085 pressure sensors
+#define PRESS_UPDATE_TIME 60000
 
 // Timer for DHT11 and DHT22 sensors
 long timer_dht = 0;
 
 // Timer for BH1750 light sensor
 long timer_light = 0;
+
+// Timer for BMP085 pressure sensor
+long timer_press = 0;
 
 // Timer for LCD display
 long timer_lcd = 0;
@@ -86,10 +96,10 @@ char thingName[] = "SmartGreen";                          // Name of your Thing 
 char serviceName[] = "setAll";                            // Name of your Service (see above)
 
 // IoT server sensor parameters
-#define sensorCount 25                                    // How many values you will be pushing to ThingWorx
+#define sensorCount 26                                    // How many values you will be pushing to ThingWorx
 char* sensorNames[] = {"soil_temp1", "soil_temp2", "soil_temp3", "soil_temp4", "soil_temp5", "soil_temp6", "soil_temp7", "soil_temp8", "soil_temp9"
                        , "soil_moisture1", "soil_moisture2", "soil_moisture3", "soil_moisture4", "soil_moisture5", "soil_moisture6", "soil_moisture7", "soil_moisture8", "soil_moisture9"
-                       , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "sun_light1"
+                       , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1"
                       };
 float sensorValues[sensorCount] = {0};
 #define SOIL_TEMP1 0
@@ -116,7 +126,8 @@ float sensorValues[sensorCount] = {0};
 #define AIR_HUM1 21
 #define AIR_HUM2 22
 #define AIR_HUM3 23
-#define SUN_LIGHT1 24
+#define AIR_PRESSURE1 24
+#define SUN_LIGHT1 25
 
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
@@ -150,6 +161,24 @@ int page_number = 0;
 
 // Object definition for light sensor
 BH1750FVI LightSensor_1;
+
+// For ThingSpeak IoT
+const String CHANNELID_1 = "128676";
+const String WRITEAPIKEY_1 = "I77EPRC4GSBK2VH9";
+const String CHANNELID_2 = "128677";
+const String WRITEAPIKEY_2 = "AGSEI25MA1010BNE";
+const String CHANNELID_3 = "128678";
+const String WRITEAPIKEY_3 = "YVWTNI5L0NXV5XER";
+const String CHANNELID_4 = "128680";
+const String WRITEAPIKEY_4 = "9GS2VWQ661JM2PHU";
+IPAddress thingspeak_server(184, 106, 153, 149);
+const int thingspeak_port = 80;
+
+// Orientation sensor
+L3G gyro;
+Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
+Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(15883);
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(10345);
 
 void setup()
 {
@@ -187,6 +216,36 @@ void setup()
   LightSensor_1.begin();
   LightSensor_1.setMode(Continuously_High_Resolution_Mode);
 
+  // Init BMP085 sensor
+  if (!bmp.begin())
+  {
+    Serial.println("Could not find a valid BMP085 sensor!");
+  }
+  // Init L3G4200D sensor
+  if (!gyro.init())
+  {
+    Serial.println("Failed to autodetect gyro type!");
+  }
+  else
+  {
+    gyro.enableDefault();
+  }
+  // Init HMC5883L sensor
+  if (!mag.begin())
+  {
+    Serial.println("Could not find a valid HMC5883L sensor!");
+  }
+  // Init ADXL345 sensor
+  if (!accel.begin())
+  {
+    Serial.println("Could not find a valid ADXL345 sensor!");
+  }
+  else
+  {
+    accel.setRange(ADXL345_RANGE_16_G);
+    accel.setDataRate(ADXL345_DATARATE_200_HZ);
+  }
+
   // Init LCD
   lcd.init();
   lcd.backlight();
@@ -213,10 +272,12 @@ void setup()
   readSensorDHT11_2();
   readSensorDHT22_1();
   readSensorBH1750_1();
+  readSensorBMP085_1();
   lcd.clear();
   lcd.setCursor(0, 0); lcd_printstr("OUT_T = " + String(sensorValues[AIR_TEMP3], 1) + " *C");
   lcd.setCursor(0, 1); lcd_printstr("OUT_H = " + String(sensorValues[AIR_HUM3], 1) + " %");
-  lcd.setCursor(0, 2); lcd_printstr("LIGHT = " + String(sensorValues[SUN_LIGHT1], 1) + " LX");
+  lcd.setCursor(0, 2); lcd_printstr("PRESS = " + String(sensorValues[AIR_PRESSURE1], 1) + " mm");
+  lcd.setCursor(0, 3); lcd_printstr("LIGHT = " + String(sensorValues[SUN_LIGHT1], 1) + " LX");
   printSerialData();
 }
 
@@ -240,6 +301,15 @@ void loop()
     readSensorBH1750_1();
     // Reset timer
     timer_light = millis();
+  }
+
+  // Read BMP085 pressure sensor
+  if (millis() > timer_press + PRESS_UPDATE_TIME)
+  {
+    // Read sensor
+    readSensorBMP085_1();
+    // Reset timer
+    timer_press = millis();
   }
 
   // Reset flags of radio sensors
@@ -320,19 +390,48 @@ void loop()
         lcd.clear();
         lcd.setCursor(0, 0); lcd_printstr("OUT_T = " + String(sensorValues[AIR_TEMP3], 1) + " *C");
         lcd.setCursor(0, 1); lcd_printstr("OUT_H = " + String(sensorValues[AIR_HUM3], 1) + " %");
-        lcd.setCursor(0, 2); lcd_printstr("LIGHT = " + String(sensorValues[SUN_LIGHT1], 1) + " LX");
+        lcd.setCursor(0, 2); lcd_printstr("PRESS = " + String(sensorValues[AIR_PRESSURE1], 1) + " mm");
+        lcd.setCursor(0, 3); lcd_printstr("LIGHT = " + String(sensorValues[SUN_LIGHT1], 1) + " LX");
         break;
       case 2:
         lcd.clear();
-        lcd.setCursor(0, 0); lcd_printstr("R_T1 = " + String(sensorValues[SOIL_TEMP1], 1) + " *C");
-        lcd.setCursor(0, 1); lcd_printstr("R_M1 = " + String(sensorValues[SOIL_MOISTURE1], 1) + " %");
-        lcd.setCursor(0, 2); lcd_printstr("R_T2 = " + String(sensorValues[SOIL_TEMP2], 1) + " *C");
-        lcd.setCursor(0, 3); lcd_printstr("R_H2 = " + String(sensorValues[SOIL_MOISTURE2], 1) + " %");
+        if (sensorFlags[SOIL_TEMP1])
+        {
+          lcd.setCursor(0, 0); lcd_printstr("R_T1 = " + String(sensorValues[SOIL_TEMP1], 1) + " *C");
+        }
+        else
+        {
+          lcd.setCursor(0, 0); lcd_printstr("R_T1 = NO DATA");
+        }
+        if (sensorFlags[SOIL_MOISTURE1])
+        {
+          lcd.setCursor(0, 1); lcd_printstr("R_M1 = " + String(sensorValues[SOIL_MOISTURE1], 1) + " %");
+        }
+        else
+        {
+          lcd.setCursor(0, 1); lcd_printstr("R_M1 = NO DATA");
+        }
+        if (sensorFlags[SOIL_TEMP2])
+        {
+          lcd.setCursor(0, 2); lcd_printstr("R_T2 = " + String(sensorValues[SOIL_TEMP2], 1) + " *C");
+        }
+        else
+        {
+          lcd.setCursor(0, 2); lcd_printstr("R_T2 = NO DATA");
+        }
+        if (sensorFlags[SOIL_MOISTURE2])
+        {
+          lcd.setCursor(0, 3); lcd_printstr("R_M2 = " + String(sensorValues[SOIL_MOISTURE2], 1) + " %");
+        }
+        else
+        {
+          lcd.setCursor(0, 3); lcd_printstr("R_M2 = NO DATA");
+        }
         break;
       case 3:
         lcd.clear();
-        lcd.setCursor(0, 0); lcd_printstr("R_T3 = " + String(sensorValues[SOIL_TEMP3], 1) + " *C");
-        lcd.setCursor(0, 1); lcd_printstr("R_M3 = " + String(sensorValues[SOIL_MOISTURE3], 1) + " %");
+        //lcd.setCursor(0, 0); lcd_printstr("R_T3 = " + String(sensorValues[SOIL_TEMP3], 1) + " *C");
+        //lcd.setCursor(0, 1); lcd_printstr("R_M3 = " + String(sensorValues[SOIL_MOISTURE3], 1) + " %");
         //lcd.setCursor(0, 2); lcd_printstr("R_T4 = " + String(sensorValues[SOIL_TEMP4], 1) + " *C");
         //lcd.setCursor(0, 3); lcd_printstr("R_H4 = " + String(sensorValues[SOIL_MOISTURE4], 1) + " %");
         break;
@@ -341,7 +440,7 @@ void loop()
     }
     // Change page number
     page_number++;
-    if (page_number > 3)
+    if (page_number > 2)
     {
       page_number = 0;
     }
@@ -356,6 +455,17 @@ void loop()
     printSerialData();
     // Reset timer
     timer_term = millis();
+  }
+
+  // Send data to IoT ThingSpeak
+  if (millis() > timer_iot + IOT_UPDATE_TIME)
+  {
+    // Send air sensors data
+    sendDataIot_ThingSpeak_1();
+    // Send soil temperature sensors data
+    sendDataIot_ThingSpeak_2();
+    // Reset timer
+    timer_iot = millis();
   }
 }
 
@@ -386,6 +496,18 @@ void readSensorBH1750_1()
   sensorValues[SUN_LIGHT1] = LightSensor_1.getAmbientLight();
 }
 
+// Read BMP085 air pressure sensor #1
+void readSensorBMP085_1()
+{
+  sensors_event_t p_event;
+  bmp.getEvent(&p_event);
+  if (p_event.pressure)
+  {
+    sensorValues[AIR_PRESSURE1] = p_event.pressure * 7.5006 / 10;
+    //bmp.getTemperature(&t);
+  }
+}
+
 // Print all sensors data to serial terminal
 void printSerialData()
 {
@@ -408,3 +530,120 @@ void lcd_printstr(String str1)
   }
 }
 
+// Send air sensors data to ThingSpeak
+void sendDataIot_ThingSpeak_1()
+{
+  Serial.print("Connecting to ");
+  Serial.print(thingspeak_server);
+  Serial.println("...");
+  if (client.connect(thingspeak_server, thingspeak_port))
+  {
+    if (client.connected())
+    {
+      Serial.println("Sending data to ThingSpeak server...\n");
+      String post_data = "field1=";
+      post_data = post_data + String(sensorValues[AIR_TEMP1], 1);
+      post_data = post_data + "&field2=";
+      post_data = post_data + String(sensorValues[AIR_HUM1], 1);
+      post_data = post_data + "&field3=";
+      post_data = post_data + String(sensorValues[AIR_TEMP2], 1);
+      post_data = post_data + "&field4=";
+      post_data = post_data + String(sensorValues[AIR_HUM2], 1);
+      post_data = post_data + "&field5=";
+      post_data = post_data + String(sensorValues[AIR_TEMP3], 1);
+      post_data = post_data + "&field6=";
+      post_data = post_data + String(sensorValues[AIR_HUM3], 1);
+      post_data = post_data + "&field7=";
+      post_data = post_data + String(sensorValues[AIR_PRESSURE1], 1);
+      post_data = post_data + "&field8=";
+      post_data = post_data + String(sensorValues[SUN_LIGHT1], 1);
+      Serial.println("Data to be send:");
+      Serial.println(post_data);
+      client.println("POST /update HTTP/1.1");
+      client.println("Host: api.thingspeak.com");
+      client.println("Connection: close");
+      client.println("X-THINGSPEAKAPIKEY: " + WRITEAPIKEY_1);
+      client.println("Content-Type: application/x-www-form-urlencoded");
+      client.print("Content-Length: ");
+      int thisLength = post_data.length();
+      client.println(thisLength);
+      client.println();
+      client.println(post_data);
+      client.println();
+      //delay(1000);
+      timer_iot_timeout = millis();
+      while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      timer_iot_timeout = millis();
+      while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
+      {
+        while (client.available() > 0)
+        {
+          char symb = client.read();
+          Serial.print(symb);
+          timer_iot_timeout = millis();
+        }
+      }
+      client.stop();
+      Serial.println("Packet successfully sent!");
+    }
+  }
+}
+
+// Send soil temperature data to ThingSpeak
+void sendDataIot_ThingSpeak_2()
+{
+  Serial.print("Connecting to ");
+  Serial.print(thingspeak_server);
+  Serial.println("...");
+  if (client.connect(thingspeak_server, thingspeak_port))
+  {
+    if (client.connected())
+    {
+      Serial.println("Sending data to ThingSpeak server...\n");
+      String post_data = "field1=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP1], 1);
+      post_data = post_data + "&field2=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP2], 1);
+      post_data = post_data + "&field3=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP3], 1);
+      post_data = post_data + "&field4=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP4], 1);
+      post_data = post_data + "&field5=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP5], 1);
+      post_data = post_data + "&field6=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP6], 1);
+      post_data = post_data + "&field7=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP7], 1);
+      post_data = post_data + "&field8=";
+      post_data = post_data + String(sensorValues[SOIL_TEMP8], 1);
+      Serial.println("Data to be send:");
+      Serial.println(post_data);
+      client.println("POST /update HTTP/1.1");
+      client.println("Host: api.thingspeak.com");
+      client.println("Connection: close");
+      client.println("X-THINGSPEAKAPIKEY: " + WRITEAPIKEY_2);
+      client.println("Content-Type: application/x-www-form-urlencoded");
+      client.print("Content-Length: ");
+      int thisLength = post_data.length();
+      client.println(thisLength);
+      client.println();
+      client.println(post_data);
+      client.println();
+      //delay(1000);
+      timer_iot_timeout = millis();
+      while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      timer_iot_timeout = millis();
+      while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
+      {
+        while (client.available() > 0)
+        {
+          char symb = client.read();
+          Serial.print(symb);
+          timer_iot_timeout = millis();
+        }
+      }
+      client.stop();
+      Serial.println("Packet successfully sent!");
+    }
+  }
+}

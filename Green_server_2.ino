@@ -1101,6 +1101,8 @@ void sendDataIot_ThingSpeak_4()
       post_data = post_data + String(controlValues[LAMP_POWER1]);
       post_data = post_data + "&field5=";
       post_data = post_data + String(sensorValues[DEVICE_TEMP], 1);
+      post_data = post_data + "&field6=";
+      post_data = post_data + String(sensorValues[MOTION_DETECT], 1);
       Serial.println("Data to be send:");
       Serial.println(post_data);
       client.println("POST /update HTTP/1.1");
@@ -1161,6 +1163,8 @@ void sendDataIot_ThingSpeak_5()
       post_data = post_data + String(sensorValues[ACC_Y], 1);
       post_data = post_data + "&field6=";
       post_data = post_data + String(sensorValues[ACC_Z], 1);
+      post_data = post_data + "&field7=";
+      post_data = post_data + String(sensorValues[GAS_CONC], 1);
       Serial.println("Data to be send:");
       Serial.println(post_data);
       client.println("POST /update HTTP/1.1");

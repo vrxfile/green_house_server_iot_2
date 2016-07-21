@@ -42,8 +42,22 @@ DHT dht11_1(DHT11_PIN1, DHT11);
 DHT dht11_2(DHT11_PIN2, DHT11);
 DHT dht22_1(DHT22_PIN1, DHT22);
 
+// MQ-2 gas sensor pin
+#define MQ2_PIN      A0
+
+// Buttons pins
+#define BUTTON1      A3
+#define BUTTON2      A4
+#define BUTTON3      A5
+
+// HC-SR04 distance sensor pins
+#define US1_trigPin 26
+#define US1_echoPin 27
+#define minimumRange 0
+#define maximumRange 400
+
 // Hardware reset pin
-#define HRESETPIN 49
+#define HRESETPIN    49
 
 // LCD display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
@@ -81,6 +95,15 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 // Period of automatic function control
 #define AUTO_UPDATE_TIME 60000
 
+// Period of read MQ2 gas sensor
+#define MQ2_UPDATE_TIME 10000
+
+// Period of read HC-SR04 distance sensor
+#define HCSR04_UPDATE_TIME 1000
+
+// Period of read buttons
+#define BUTTONS_UPDATE_TIME 1000
+
 // Period of autoreset
 #define HRST_UPDATE_TIME 7200000
 
@@ -111,6 +134,15 @@ long timer_iot = 0;
 // Timer for 433 MHz receiver
 long timer_rec = 0;
 
+// Timer for MQ2 gas sensor
+long timer_mq2 = 0;
+
+// Timer for HC-SR04 distance sensor
+long timer_hcsr04 = 0;
+
+// Timer for buttons
+long timer_buttons = 0;
+
 // Timer for reset flags for radio sensors
 long timer_radioreset = 0;
 
@@ -133,11 +165,11 @@ char thingName[] = "SmartGreen";                          // Name of your Thing 
 char serviceName[] = "setAll";                            // Name of your Service (see above)
 
 // IoT server sensor parameters
-#define sensorCount 36                                    // How many values you will be pushing to ThingWorx
+#define sensorCount 38                                    // How many values you will be pushing to ThingWorx
 char* sensorNames[] = {"soil_temp1", "soil_temp2", "soil_temp3", "soil_temp4", "soil_temp5", "soil_temp6", "soil_temp7", "soil_temp8", "soil_temp9"
                        , "soil_moisture1", "soil_moisture2", "soil_moisture3", "soil_moisture4", "soil_moisture5", "soil_moisture6", "soil_moisture7", "soil_moisture8", "soil_moisture9"
                        , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1", "mag_x", "mag_y", "mag_z"
-                       , "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "device_temp"
+                       , "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "device_temp", "gas_conc", "motion_detect"
                       };
 float sensorValues[sensorCount] = {0};
 #define SOIL_TEMP1     0
@@ -176,6 +208,8 @@ float sensorValues[sensorCount] = {0};
 #define GYR_Y          33
 #define GYR_Z          34
 #define DEVICE_TEMP    35
+#define GAS_CONC       36
+#define MOTION_DETECT  37
 
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
@@ -187,6 +221,9 @@ int controlValues[controlCount] = {0};
 #define VALVE_POWER2  1
 #define WINDOW_STATE1 2
 #define LAMP_POWER1   3
+
+// Flags of control devices
+int controlFlags[controlCount] = {0};
 
 // Timeouts of IoT server
 #define IOT_TIMEOUT1 5000
@@ -250,6 +287,18 @@ void setup()
 
   // Init hardware RESET pin
   pinMode(HRESETPIN, INPUT);
+
+  // Init MQ-2 gas sensor pin
+  pinMode(MQ2_PIN, INPUT);
+
+  // Init HC-SR04 distance sensor pins
+  pinMode(US1_trigPin, OUTPUT);
+  pinMode(US1_echoPin, INPUT);
+
+  // Init buttons pins with pullup's
+  pinMode(BUTTON1, INPUT_PULLUP);
+  pinMode(BUTTON2, INPUT_PULLUP);
+  pinMode(BUTTON3, INPUT_PULLUP);
 
   // Init relay outputs
   pinMode(RELAY_PIN1, OUTPUT);
@@ -361,6 +410,8 @@ void setup()
   readSensorBMP085_1(); watchdog_reset();
   readSensorHMC5883L_1(); watchdog_reset();
   readSensorACCGYRO_1(); watchdog_reset();
+  readSensorMQ2(); watchdog_reset();
+  readSensorHCSR04(); watchdog_reset();
   lcd.clear();
   lcd.setCursor(0, 0); lcd_printstr("OUT_T = " + String(sensorValues[AIR_TEMP3], 1) + " *C");
   lcd.setCursor(0, 1); lcd_printstr("OUT_H = " + String(sensorValues[AIR_HUM3], 1) + " %");
@@ -418,6 +469,24 @@ void loop()
     readSensorACCGYRO_1(); watchdog_reset();
     // Reset timer
     timer_seismo = millis();
+  }
+
+  // Read MQ-2 gas sensor
+  if (millis() > timer_mq2 + MQ2_UPDATE_TIME)
+  {
+    // Read sensor
+    readSensorMQ2(); watchdog_reset();
+    // Reset timer
+    timer_mq2 = millis();
+  }
+
+  // Read HC-SR04 distance sensor
+  if (millis() > timer_hcsr04 + HCSR04_UPDATE_TIME)
+  {
+    // Read sensor
+    readSensorHCSR04(); watchdog_reset();
+    // Reset timer
+    timer_hcsr04 = millis();
   }
 
   // Reset flags of radio sensors
@@ -605,12 +674,18 @@ void loop()
         lcd.setCursor(0, 3); lcd_printstr("LAMPS  = " + String(controlValues[LAMP_POWER1]));
         watchdog_reset();
         break;
+      case 6:
+        lcd.clear();
+        lcd.setCursor(0, 0); lcd_printstr("GAS  = " + String(sensorValues[GAS_CONC], 1) + " %");
+        lcd.setCursor(0, 1); lcd_printstr("DIST = " + String(sensorValues[MOTION_DETECT], 1) + " cm");
+        watchdog_reset();
+        break;
       default:
         break;
     }
     // Change page number
     page_number++;
-    if (page_number > 5)
+    if (page_number > 6)
     {
       page_number = 0;
     }
@@ -746,6 +821,40 @@ void readSensorACCGYRO_1()
   sensorFlags[GYR_Z] = true;
 }
 
+// Read MQ-2 gas sensor
+void readSensorMQ2()
+{
+  sensorValues[GAS_CONC] = analogRead(MQ2_PIN) / 1023.0 * 100.0;
+  sensorFlags[GAS_CONC] = true;
+}
+
+// Read HC-SR04 distance sensor
+void readSensorHCSR04()
+{
+  float duration = 0;
+  float distance = 0;
+  digitalWrite(US1_trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(US1_trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(US1_trigPin, LOW);
+  duration = pulseIn(US1_echoPin, HIGH, 50000);
+  distance = duration / 58.2;
+  if (distance >= maximumRange || distance <= minimumRange)
+  {
+    distance = -1;
+  }
+  sensorValues[MOTION_DETECT] = distance;
+  if (distance < 1)
+  {
+    sensorFlags[MOTION_DETECT] = false;
+  }
+  else
+  {
+    sensorFlags[MOTION_DETECT] = true;
+  }
+}
+
 // Print all sensors data to serial terminal
 void printSerialData()
 {
@@ -785,8 +894,10 @@ void sendDataIot_ThingSpeak_1()
   Serial.println("...");
   if (client.connect(thingspeak_server, thingspeak_port))
   {
+    watchdog_reset();
     if (client.connected())
     {
+      watchdog_reset();
       Serial.println("Sending data to ThingSpeak server...\n");
       String post_data = "field1=";
       post_data = post_data + String(sensorValues[AIR_TEMP1], 1);
@@ -817,9 +928,11 @@ void sendDataIot_ThingSpeak_1()
       client.println();
       client.println(post_data);
       client.println();
+      watchdog_reset();
       //delay(1000);
       timer_iot_timeout = millis();
       while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      watchdog_reset();
       timer_iot_timeout = millis();
       while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
       {
@@ -832,6 +945,7 @@ void sendDataIot_ThingSpeak_1()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
+      watchdog_reset();
     }
   }
 }
@@ -844,8 +958,10 @@ void sendDataIot_ThingSpeak_2()
   Serial.println("...");
   if (client.connect(thingspeak_server, thingspeak_port))
   {
+    watchdog_reset();
     if (client.connected())
     {
+      watchdog_reset();
       Serial.println("Sending data to ThingSpeak server...\n");
       String post_data = "field1=";
       post_data = post_data + String(sensorValues[SOIL_TEMP1], 1);
@@ -876,9 +992,11 @@ void sendDataIot_ThingSpeak_2()
       client.println();
       client.println(post_data);
       client.println();
+      watchdog_reset();
       //delay(1000);
       timer_iot_timeout = millis();
       while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      watchdog_reset();
       timer_iot_timeout = millis();
       while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
       {
@@ -891,6 +1009,7 @@ void sendDataIot_ThingSpeak_2()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
+      watchdog_reset();
     }
   }
 }
@@ -903,8 +1022,10 @@ void sendDataIot_ThingSpeak_3()
   Serial.println("...");
   if (client.connect(thingspeak_server, thingspeak_port))
   {
+    watchdog_reset();
     if (client.connected())
     {
+      watchdog_reset();
       Serial.println("Sending data to ThingSpeak server...\n");
       String post_data = "field1=";
       post_data = post_data + String(sensorValues[SOIL_MOISTURE1], 1);
@@ -935,9 +1056,11 @@ void sendDataIot_ThingSpeak_3()
       client.println();
       client.println(post_data);
       client.println();
+      watchdog_reset();
       //delay(1000);
       timer_iot_timeout = millis();
       while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      watchdog_reset();
       timer_iot_timeout = millis();
       while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
       {
@@ -950,6 +1073,7 @@ void sendDataIot_ThingSpeak_3()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
+      watchdog_reset();
     }
   }
 }
@@ -962,8 +1086,10 @@ void sendDataIot_ThingSpeak_4()
   Serial.println("...");
   if (client.connect(thingspeak_server, thingspeak_port))
   {
+    watchdog_reset();
     if (client.connected())
     {
+      watchdog_reset();
       Serial.println("Sending data to ThingSpeak server...\n");
       String post_data = "field1=";
       post_data = post_data + String(controlValues[VALVE_POWER1]);
@@ -988,9 +1114,11 @@ void sendDataIot_ThingSpeak_4()
       client.println();
       client.println(post_data);
       client.println();
+      watchdog_reset();
       //delay(1000);
       timer_iot_timeout = millis();
       while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      watchdog_reset();
       timer_iot_timeout = millis();
       while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
       {
@@ -1003,6 +1131,7 @@ void sendDataIot_ThingSpeak_4()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
+      watchdog_reset();
     }
   }
 }
@@ -1015,8 +1144,10 @@ void sendDataIot_ThingSpeak_5()
   Serial.println("...");
   if (client.connect(thingspeak_server, thingspeak_port))
   {
+    watchdog_reset();
     if (client.connected())
     {
+      watchdog_reset();
       Serial.println("Sending data to ThingSpeak server...\n");
       String post_data = "field1=";
       post_data = post_data + String(sensorValues[MAG_X], 1);
@@ -1043,10 +1174,12 @@ void sendDataIot_ThingSpeak_5()
       client.println();
       client.println(post_data);
       client.println();
+      watchdog_reset();
       //delay(1000);
       timer_iot_timeout = millis();
       while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
       timer_iot_timeout = millis();
+      watchdog_reset();
       while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
       {
         while (client.available() > 0)
@@ -1058,6 +1191,7 @@ void sendDataIot_ThingSpeak_5()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
+      watchdog_reset();
     }
   }
 }
@@ -1065,6 +1199,8 @@ void sendDataIot_ThingSpeak_5()
 // Automatic function control
 void controlDevices_1()
 {
+  watchdog_reset();
+
   Serial.println("Run automatic function...");
   Serial.println();
 
@@ -1077,6 +1213,8 @@ void controlDevices_1()
   {
     controlValues[VALVE_POWER2] = false;
   }
+
+  watchdog_reset();
 
   // Automatic on output valve if minimum moisture
   float min_moisture = 100;
@@ -1098,6 +1236,8 @@ void controlDevices_1()
   }
   Serial.println("Min soil moisture: " + String(min_moisture, 1));
   Serial.println();
+
+  watchdog_reset();
 
   // Read control values and power devices
   digitalWrite(RELAY_PIN2, controlValues[VALVE_POWER2]);

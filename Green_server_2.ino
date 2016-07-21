@@ -645,6 +645,15 @@ void loop()
     timer_iot = millis();
   }
 
+  // Hard reset of device
+  if (millis() > timer_hreset + HRST_UPDATE_TIME)
+  {
+    Serial.println("Hard reset timeout!\n");
+    while (1)
+    {
+    }
+  }
+
   // Reset software watchdog
   watchdog_reset();
 }

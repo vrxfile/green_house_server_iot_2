@@ -225,6 +225,9 @@ int controlValues[controlCount] = {0};
 // Flags of control devices
 int controlFlags[controlCount] = {0};
 
+// Timers for control devices
+int controlTimers[controlCount] = {0};
+
 // Timeouts of IoT server
 #define IOT_TIMEOUT1 5000
 #define IOT_TIMEOUT2 100

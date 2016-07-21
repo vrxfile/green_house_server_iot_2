@@ -11,6 +11,9 @@
 #include <Adafruit_ADXL345_U.h>
 #include <Adafruit_HMC5883_U.h>
 
+// Minimum soil moisture constant
+#define MIN_SOIL_MOISTURE 10.0
+
 // LED pin
 #define LED_PIN      13
 
@@ -39,6 +42,9 @@ DHT dht11_1(DHT11_PIN1, DHT11);
 DHT dht11_2(DHT11_PIN2, DHT11);
 DHT dht22_1(DHT22_PIN1, DHT22);
 
+// Hardware reset pin
+#define HRESETPIN 49
+
 // LCD display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
@@ -66,6 +72,18 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 // Period of read BMP085 pressure sensors
 #define PRESS_UPDATE_TIME 60000
 
+// Period of read HMC5883L magnetic sensors
+#define MAGNETIC_UPDATE_TIME 60000
+
+// Period of read accelerometer and gyroscope sensors
+#define SEISMO_UPDATE_TIME 60000
+
+// Period of automatic function control
+#define AUTO_UPDATE_TIME 60000
+
+// Period of autoreset
+#define HRST_UPDATE_TIME 7200000
+
 // Timer for DHT11 and DHT22 sensors
 long timer_dht = 0;
 
@@ -74,6 +92,12 @@ long timer_light = 0;
 
 // Timer for BMP085 pressure sensor
 long timer_press = 0;
+
+// Timer for HMC5883L magnetic sensor
+long timer_magnetic = 0;
+
+// Timer for accelerometer and gyroscope sensors
+long timer_seismo = 0;
 
 // Timer for LCD display
 long timer_lcd = 0;
@@ -90,6 +114,17 @@ long timer_rec = 0;
 // Timer for reset flags for radio sensors
 long timer_radioreset = 0;
 
+// Timer for automatic function control
+long timer_autocontrol = 0;
+
+// Timer for automatic reset
+long timer_hreset = 0;
+
+// Software watchdog 20 seconds
+#define MAX_WDT 2000
+long timer3_counter = 0;
+long wdt_timer = 0;
+
 // IoT server network parameters
 char iot_server[] = "cttit5402.cloud.thingworx.com";      // Name address for Google (using DNS)
 IPAddress iot_address(52, 87, 101, 142);
@@ -98,21 +133,22 @@ char thingName[] = "SmartGreen";                          // Name of your Thing 
 char serviceName[] = "setAll";                            // Name of your Service (see above)
 
 // IoT server sensor parameters
-#define sensorCount 26                                    // How many values you will be pushing to ThingWorx
+#define sensorCount 36                                    // How many values you will be pushing to ThingWorx
 char* sensorNames[] = {"soil_temp1", "soil_temp2", "soil_temp3", "soil_temp4", "soil_temp5", "soil_temp6", "soil_temp7", "soil_temp8", "soil_temp9"
                        , "soil_moisture1", "soil_moisture2", "soil_moisture3", "soil_moisture4", "soil_moisture5", "soil_moisture6", "soil_moisture7", "soil_moisture8", "soil_moisture9"
-                       , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1"
+                       , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1", "mag_x", "mag_y", "mag_z"
+                       , "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "device_temp"
                       };
 float sensorValues[sensorCount] = {0};
-#define SOIL_TEMP1 0
-#define SOIL_TEMP2 1
-#define SOIL_TEMP3 2
-#define SOIL_TEMP4 3
-#define SOIL_TEMP5 4
-#define SOIL_TEMP6 5
-#define SOIL_TEMP7 6
-#define SOIL_TEMP8 7
-#define SOIL_TEMP9 8
+#define SOIL_TEMP1     0
+#define SOIL_TEMP2     1
+#define SOIL_TEMP3     2
+#define SOIL_TEMP4     3
+#define SOIL_TEMP5     4
+#define SOIL_TEMP6     5
+#define SOIL_TEMP7     6
+#define SOIL_TEMP8     7
+#define SOIL_TEMP9     8
 #define SOIL_MOISTURE1 9
 #define SOIL_MOISTURE2 10
 #define SOIL_MOISTURE3 11
@@ -122,17 +158,35 @@ float sensorValues[sensorCount] = {0};
 #define SOIL_MOISTURE7 15
 #define SOIL_MOISTURE8 16
 #define SOIL_MOISTURE9 17
-#define AIR_TEMP1 18
-#define AIR_TEMP2 19
-#define AIR_TEMP3 20
-#define AIR_HUM1 21
-#define AIR_HUM2 22
-#define AIR_HUM3 23
-#define AIR_PRESSURE1 24
-#define SUN_LIGHT1 25
+#define AIR_TEMP1      18
+#define AIR_TEMP2      19
+#define AIR_TEMP3      20
+#define AIR_HUM1       21
+#define AIR_HUM2       22
+#define AIR_HUM3       23
+#define AIR_PRESSURE1  24
+#define SUN_LIGHT1     25
+#define MAG_X          26
+#define MAG_Y          27
+#define MAG_Z          28
+#define ACC_X          29
+#define ACC_Y          30
+#define ACC_Z          31
+#define GYR_X          32
+#define GYR_Y          33
+#define GYR_Z          34
+#define DEVICE_TEMP    35
 
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
+
+// States of control devices
+#define controlCount 4
+int controlValues[controlCount] = {0};
+#define VALVE_POWER1  0
+#define VALVE_POWER2  1
+#define WINDOW_STATE1 2
+#define LAMP_POWER1   3
 
 // Timeouts of IoT server
 #define IOT_TIMEOUT1 5000
@@ -173,6 +227,8 @@ const String CHANNELID_3 = "128678";
 const String WRITEAPIKEY_3 = "YVWTNI5L0NXV5XER";
 const String CHANNELID_4 = "128680";
 const String WRITEAPIKEY_4 = "9GS2VWQ661JM2PHU";
+const String CHANNELID_5 = "131612";
+const String WRITEAPIKEY_5 = "RFWNIFRUD1SFTVK9";
 IPAddress thingspeak_server(184, 106, 153, 149);
 const int thingspeak_port = 80;
 
@@ -192,6 +248,9 @@ void setup()
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
 
+  // Init hardware RESET pin
+  pinMode(HRESETPIN, INPUT);
+
   // Init relay outputs
   pinMode(RELAY_PIN1, OUTPUT);
   pinMode(RELAY_PIN2, OUTPUT);
@@ -204,27 +263,43 @@ void setup()
   pinMode(DIRA, OUTPUT);
   pinMode(DIRB, OUTPUT);
 
+  // Timer 3 interrupt (for custom WatchDog)
+  noInterrupts();           // disable all interrupts
+  TCCR3A = 0;
+  TCCR3B = 0;
+  // Set timer1_counter to the correct value for our interrupt interval
+  timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
+  //timer3_counter = 64286;   // preload timer 65536-16MHz/256/50Hz
+  //timer3_counter = 34286;   // preload timer 65536-16MHz/256/2Hz
+  TCNT3 = timer3_counter;   // preload timer
+  TCCR3B |= (1 << CS12);    // 256 prescaler
+  TIMSK3 |= (1 << TOIE3);   // enable timer overflow interrupt
+  interrupts();             // enable all interrupts
+  watchdog_reset();
+
   // Init receiver
   vw_set_rx_pin(RECEIVER_PIN);
   vw_set_tx_pin(TRANSMITTER_PIN);
   vw_set_ptt_pin(PTT_PIN);
-  vw_setup(512);
-  vw_rx_start();
+  vw_setup(512); watchdog_reset();
+  vw_rx_start(); watchdog_reset();
 
   // Init DHT11 and DHT22 sensors
-  dht11_1.begin();
-  dht11_2.begin();
-  dht22_1.begin();
+  dht11_1.begin(); watchdog_reset();
+  dht11_2.begin(); watchdog_reset();
+  dht22_1.begin(); watchdog_reset();
 
   // Init BH1750 light sensor
-  LightSensor_1.begin();
-  LightSensor_1.setMode(Continuously_High_Resolution_Mode);
+  LightSensor_1.begin(); watchdog_reset();
+  LightSensor_1.setMode(Continuously_High_Resolution_Mode); watchdog_reset();
 
   // Init BMP085 sensor
   if (!bmp.begin())
   {
     Serial.println("Could not find a valid BMP085 sensor!");
   }
+  watchdog_reset();
+
   // Init L3G4200D sensor
   if (!gyro.init())
   {
@@ -234,11 +309,15 @@ void setup()
   {
     gyro.enableDefault();
   }
+  watchdog_reset();
+
   // Init HMC5883L sensor
   if (!mag.begin())
   {
     Serial.println("Could not find a valid HMC5883L sensor!");
   }
+  watchdog_reset();
+
   // Init ADXL345 sensor
   if (!accel.begin())
   {
@@ -249,11 +328,12 @@ void setup()
     accel.setRange(ADXL345_RANGE_16_G);
     accel.setDataRate(ADXL345_DATARATE_200_HZ);
   }
+  watchdog_reset();
 
   // Init LCD
-  lcd.init();
-  lcd.backlight();
-  lcd.clear();
+  lcd.init(); watchdog_reset();
+  lcd.backlight(); watchdog_reset();
+  lcd.clear(); watchdog_reset();
 
   // Init Ethernet ENC28J60
   if (Ethernet.begin(mac) == 0)
@@ -261,6 +341,7 @@ void setup()
     Serial.println("Failed to configure Ethernet using DHCP");
     Ethernet.begin(mac, ip, dnsServerIP, gateway, subnet);
   }
+  watchdog_reset();
   Serial.print("LocalIP:\t\t");
   Serial.println(Ethernet.localIP());
   Serial.print("SubnetMask:\t\t");
@@ -270,19 +351,24 @@ void setup()
   Serial.print("dnsServerIP:\t\t");
   Serial.println(Ethernet.dnsServerIP());
   Serial.println("");
+  watchdog_reset();
 
   // One time read all sensors and print data
-  readSensorDHT11_1();
-  readSensorDHT11_2();
-  readSensorDHT22_1();
-  readSensorBH1750_1();
-  readSensorBMP085_1();
+  readSensorDHT11_1(); watchdog_reset();
+  readSensorDHT11_2(); watchdog_reset();
+  readSensorDHT22_1(); watchdog_reset();
+  readSensorBH1750_1(); watchdog_reset();
+  readSensorBMP085_1(); watchdog_reset();
+  readSensorHMC5883L_1(); watchdog_reset();
+  readSensorACCGYRO_1(); watchdog_reset();
   lcd.clear();
   lcd.setCursor(0, 0); lcd_printstr("OUT_T = " + String(sensorValues[AIR_TEMP3], 1) + " *C");
   lcd.setCursor(0, 1); lcd_printstr("OUT_H = " + String(sensorValues[AIR_HUM3], 1) + " %");
   lcd.setCursor(0, 2); lcd_printstr("PRESS = " + String(sensorValues[AIR_PRESSURE1], 1) + " mm");
   lcd.setCursor(0, 3); lcd_printstr("LIGHT = " + String(sensorValues[SUN_LIGHT1], 1) + " LX");
+  watchdog_reset();
   printSerialData();
+  watchdog_reset();
 }
 
 void loop()
@@ -291,9 +377,9 @@ void loop()
   if (millis() > timer_dht + DHT_UPDATE_TIME)
   {
     // Read sensors
-    readSensorDHT11_1();
-    readSensorDHT11_2();
-    readSensorDHT22_1();
+    readSensorDHT11_1(); watchdog_reset();
+    readSensorDHT11_2(); watchdog_reset();
+    readSensorDHT22_1(); watchdog_reset();
     // Reset timer
     timer_dht = millis();
   }
@@ -302,7 +388,7 @@ void loop()
   if (millis() > timer_light + LIGHT_UPDATE_TIME)
   {
     // Read sensor
-    readSensorBH1750_1();
+    readSensorBH1750_1(); watchdog_reset();
     // Reset timer
     timer_light = millis();
   }
@@ -311,9 +397,27 @@ void loop()
   if (millis() > timer_press + PRESS_UPDATE_TIME)
   {
     // Read sensor
-    readSensorBMP085_1();
+    readSensorBMP085_1(); watchdog_reset();
     // Reset timer
     timer_press = millis();
+  }
+
+  // Read HMC5883L magnetic sensor
+  if (millis() > timer_magnetic + MAGNETIC_UPDATE_TIME)
+  {
+    // Read sensor
+    readSensorHMC5883L_1(); watchdog_reset();
+    // Reset timer
+    timer_magnetic = millis();
+  }
+
+  // Read accelerometer and gyroscope sensors
+  if (millis() > timer_seismo + SEISMO_UPDATE_TIME)
+  {
+    // Read sensor
+    readSensorACCGYRO_1(); watchdog_reset();
+    // Reset timer
+    timer_seismo = millis();
   }
 
   // Reset flags of radio sensors
@@ -324,8 +428,18 @@ void loop()
     {
       sensorFlags[u] = false;
     }
+    watchdog_reset();
     // Reset timer
     timer_radioreset = millis();
+  }
+
+  // Automatic function control
+  if (millis() > timer_autocontrol + AUTO_UPDATE_TIME)
+  {
+    // Run automatic function control
+    controlDevices_1(); watchdog_reset();
+    // Reset timer
+    timer_autocontrol = millis();
   }
 
   // Read 433 MHz receiver
@@ -342,6 +456,7 @@ void loop()
         Serial.print((char)rec_buf[i]);
       }
       Serial.println();
+      watchdog_reset();
       // Decrypt parameters from JSON packet
       for (int i = 0; i < rec_buflen; i++)
       {
@@ -354,6 +469,7 @@ void loop()
       int sensor_addr = json_array["A"];
       float sensor_moisture = json_array["M"];
       float sensor_temperature = json_array["T"];
+      watchdog_reset();
       if ((sensor_addr >= 1) && (sensor_addr <= 9))
       {
         Serial.println("Node address: " + String(sensor_addr));
@@ -373,7 +489,9 @@ void loop()
         }
       }
       digitalWrite(LED_PIN, LOW);
+      watchdog_reset();
     }
+    watchdog_reset();
     // Reset timer
     timer_rec = millis();
   }
@@ -389,6 +507,7 @@ void loop()
         lcd.setCursor(0, 1); lcd_printstr("IN_H1 = " + String(sensorValues[AIR_HUM1], 1) + " %");
         lcd.setCursor(0, 2); lcd_printstr("IN_T2 = " + String(sensorValues[AIR_TEMP2], 1) + " *C");
         lcd.setCursor(0, 3); lcd_printstr("IN_H2 = " + String(sensorValues[AIR_HUM2], 1) + " %");
+        watchdog_reset();
         break;
       case 1:
         lcd.clear();
@@ -396,6 +515,7 @@ void loop()
         lcd.setCursor(0, 1); lcd_printstr("OUT_H = " + String(sensorValues[AIR_HUM3], 1) + " %");
         lcd.setCursor(0, 2); lcd_printstr("PRESS = " + String(sensorValues[AIR_PRESSURE1], 1) + " mm");
         lcd.setCursor(0, 3); lcd_printstr("LIGHT = " + String(sensorValues[SUN_LIGHT1], 1) + " LX");
+        watchdog_reset();
         break;
       case 2:
         lcd.clear();
@@ -431,23 +551,70 @@ void loop()
         {
           lcd.setCursor(0, 3); lcd_printstr("R_M2 = NO DATA");
         }
+        watchdog_reset();
         break;
       case 3:
         lcd.clear();
-        //lcd.setCursor(0, 0); lcd_printstr("R_T3 = " + String(sensorValues[SOIL_TEMP3], 1) + " *C");
-        //lcd.setCursor(0, 1); lcd_printstr("R_M3 = " + String(sensorValues[SOIL_MOISTURE3], 1) + " %");
-        //lcd.setCursor(0, 2); lcd_printstr("R_T4 = " + String(sensorValues[SOIL_TEMP4], 1) + " *C");
-        //lcd.setCursor(0, 3); lcd_printstr("R_H4 = " + String(sensorValues[SOIL_MOISTURE4], 1) + " %");
+        if (sensorFlags[SOIL_TEMP3])
+        {
+          lcd.setCursor(0, 0); lcd_printstr("R_T3 = " + String(sensorValues[SOIL_TEMP3], 1) + " *C");
+        }
+        else
+        {
+          lcd.setCursor(0, 0); lcd_printstr("R_T3 = NO DATA");
+        }
+        if (sensorFlags[SOIL_MOISTURE3])
+        {
+          lcd.setCursor(0, 1); lcd_printstr("R_M3 = " + String(sensorValues[SOIL_MOISTURE3], 1) + " %");
+        }
+        else
+        {
+          lcd.setCursor(0, 1); lcd_printstr("R_M3 = NO DATA");
+        }
+        if (sensorFlags[SOIL_TEMP4])
+        {
+          lcd.setCursor(0, 2); lcd_printstr("R_T4 = " + String(sensorValues[SOIL_TEMP4], 1) + " *C");
+        }
+        else
+        {
+          lcd.setCursor(0, 2); lcd_printstr("R_T4 = NO DATA");
+        }
+        if (sensorFlags[SOIL_MOISTURE4])
+        {
+          lcd.setCursor(0, 3); lcd_printstr("R_M4 = " + String(sensorValues[SOIL_MOISTURE4], 1) + " %");
+        }
+        else
+        {
+          lcd.setCursor(0, 3); lcd_printstr("R_M4 = NO DATA");
+        }
+        watchdog_reset();
+        break;
+      case 4:
+        lcd.clear();
+        lcd.setCursor(0, 0); lcd_printstr("MX = " + String(sensorValues[MAG_X], 1) + " uT");
+        lcd.setCursor(0, 1); lcd_printstr("MY = " + String(sensorValues[MAG_Y], 1) + " uT");
+        lcd.setCursor(0, 2); lcd_printstr("MZ = " + String(sensorValues[MAG_Z], 1) + " uT");
+        lcd.setCursor(0, 3); lcd_printstr("DT = " + String(sensorValues[DEVICE_TEMP], 1) + " *C");
+        watchdog_reset();
+        break;
+      case 5:
+        lcd.clear();
+        lcd.setCursor(0, 0); lcd_printstr("VALVE1 = " + String(controlValues[VALVE_POWER1]));
+        lcd.setCursor(0, 1); lcd_printstr("VALVE2 = " + String(controlValues[VALVE_POWER2]));
+        lcd.setCursor(0, 2); lcd_printstr("WINDOW = " + String(controlValues[WINDOW_STATE1]));
+        lcd.setCursor(0, 3); lcd_printstr("LAMPS  = " + String(controlValues[LAMP_POWER1]));
+        watchdog_reset();
         break;
       default:
         break;
     }
     // Change page number
     page_number++;
-    if (page_number > 2)
+    if (page_number > 5)
     {
       page_number = 0;
     }
+    watchdog_reset();
     // Reset timer
     timer_lcd = millis();
   }
@@ -456,7 +623,7 @@ void loop()
   if (millis() > timer_term + TERM_UPDATE_TIME)
   {
     // Print all data to serial terminal
-    printSerialData();
+    printSerialData(); watchdog_reset();
     // Reset timer
     timer_term = millis();
   }
@@ -465,14 +632,21 @@ void loop()
   if (millis() > timer_iot + IOT_UPDATE_TIME)
   {
     // Send air sensors data
-    sendDataIot_ThingSpeak_1();
+    sendDataIot_ThingSpeak_1(); watchdog_reset();
     // Send soil temperature sensors data
-    sendDataIot_ThingSpeak_2();
+    sendDataIot_ThingSpeak_2(); watchdog_reset();
     // Send soil moisture sensors data
-    sendDataIot_ThingSpeak_3();
+    sendDataIot_ThingSpeak_3(); watchdog_reset();
+    // Send controls data
+    sendDataIot_ThingSpeak_4(); watchdog_reset();
+    // Send magnetic and seismo data
+    sendDataIot_ThingSpeak_5(); watchdog_reset();
     // Reset timer
     timer_iot = millis();
   }
+
+  // Reset software watchdog
+  watchdog_reset();
 }
 
 // Read DHT11 sensor #1
@@ -512,18 +686,55 @@ void readSensorBH1750_1()
 // Read BMP085 air pressure sensor #1
 void readSensorBMP085_1()
 {
+  float ttt = 0;
   sensors_event_t p_event;
   bmp.getEvent(&p_event);
   if (p_event.pressure)
   {
     sensorValues[AIR_PRESSURE1] = p_event.pressure * 7.5006 / 10;
+    bmp.getTemperature(&ttt);
+    sensorValues[DEVICE_TEMP] = ttt;
     sensorFlags[AIR_PRESSURE1] = true;
-    //bmp.getTemperature(&t);
+    sensorFlags[DEVICE_TEMP] = true;
   }
   else
   {
     sensorFlags[AIR_PRESSURE1] = false;
+    sensorFlags[DEVICE_TEMP] = false;
   }
+}
+
+// Read HMC5883L magnetic sensor #1
+void readSensorHMC5883L_1()
+{
+  sensors_event_t m_event;
+  mag.getEvent(&m_event);
+  sensorValues[MAG_X] = m_event.magnetic.x;
+  sensorValues[MAG_Y] = m_event.magnetic.y;
+  sensorValues[MAG_Z] = m_event.magnetic.z;
+  sensorFlags[MAG_X] = true;
+  sensorFlags[MAG_Y] = true;
+  sensorFlags[MAG_Z] = true;
+}
+
+// Read accelerometer and gyroscope sensors
+void readSensorACCGYRO_1()
+{
+  sensors_event_t a_event;
+  accel.getEvent(&a_event);
+  sensorValues[ACC_X] = a_event.acceleration.x;
+  sensorValues[ACC_Y] = a_event.acceleration.y;
+  sensorValues[ACC_Z] = a_event.acceleration.z;
+  gyro.read();
+  sensorValues[GYR_X] = gyro.g.x / 1000;
+  sensorValues[GYR_Y] = gyro.g.y / 1000;
+  sensorValues[GYR_Z] = gyro.g.z / 1000;
+  sensorFlags[ACC_X] = true;
+  sensorFlags[ACC_Y] = true;
+  sensorFlags[ACC_Z] = true;
+  sensorFlags[GYR_X] = true;
+  sensorFlags[GYR_Y] = true;
+  sensorFlags[GYR_Z] = true;
 }
 
 // Print all sensors data to serial terminal
@@ -536,6 +747,14 @@ void printSerialData()
     Serial.print(": ");
     Serial.print(String(sensorValues[u], 1) + "\t\t");
     Serial.println(String(sensorFlags[u]));
+  }
+  Serial.println();
+  for (int u = 0; u < controlCount; u++)
+  {
+    Serial.print("Control");
+    Serial.print(u);
+    Serial.print(": ");
+    Serial.println(String(controlValues[u]));
   }
   Serial.println();
 }
@@ -726,3 +945,176 @@ void sendDataIot_ThingSpeak_3()
   }
 }
 
+// Send soil moistures data to ThingSpeak
+void sendDataIot_ThingSpeak_4()
+{
+  Serial.print("Connecting to ");
+  Serial.print(thingspeak_server);
+  Serial.println("...");
+  if (client.connect(thingspeak_server, thingspeak_port))
+  {
+    if (client.connected())
+    {
+      Serial.println("Sending data to ThingSpeak server...\n");
+      String post_data = "field1=";
+      post_data = post_data + String(controlValues[VALVE_POWER1]);
+      post_data = post_data + "&field2=";
+      post_data = post_data + String(controlValues[VALVE_POWER2]);
+      post_data = post_data + "&field3=";
+      post_data = post_data + String(controlValues[WINDOW_STATE1]);
+      post_data = post_data + "&field4=";
+      post_data = post_data + String(controlValues[LAMP_POWER1]);
+      post_data = post_data + "&field5=";
+      post_data = post_data + String(sensorValues[DEVICE_TEMP], 1);
+      Serial.println("Data to be send:");
+      Serial.println(post_data);
+      client.println("POST /update HTTP/1.1");
+      client.println("Host: api.thingspeak.com");
+      client.println("Connection: close");
+      client.println("X-THINGSPEAKAPIKEY: " + WRITEAPIKEY_4);
+      client.println("Content-Type: application/x-www-form-urlencoded");
+      client.print("Content-Length: ");
+      int thisLength = post_data.length();
+      client.println(thisLength);
+      client.println();
+      client.println(post_data);
+      client.println();
+      //delay(1000);
+      timer_iot_timeout = millis();
+      while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      timer_iot_timeout = millis();
+      while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
+      {
+        while (client.available() > 0)
+        {
+          char symb = client.read();
+          Serial.print(symb);
+          timer_iot_timeout = millis();
+        }
+      }
+      client.stop();
+      Serial.println("Packet successfully sent!");
+    }
+  }
+}
+
+// Send magnetic and seismo data to ThingSpeak
+void sendDataIot_ThingSpeak_5()
+{
+  Serial.print("Connecting to ");
+  Serial.print(thingspeak_server);
+  Serial.println("...");
+  if (client.connect(thingspeak_server, thingspeak_port))
+  {
+    if (client.connected())
+    {
+      Serial.println("Sending data to ThingSpeak server...\n");
+      String post_data = "field1=";
+      post_data = post_data + String(sensorValues[MAG_X], 1);
+      post_data = post_data + "&field2=";
+      post_data = post_data + String(sensorValues[MAG_Y], 1);
+      post_data = post_data + "&field3=";
+      post_data = post_data + String(sensorValues[MAG_Z], 1);
+      post_data = post_data + "&field4=";
+      post_data = post_data + String(sensorValues[ACC_X], 1);
+      post_data = post_data + "&field5=";
+      post_data = post_data + String(sensorValues[ACC_Y], 1);
+      post_data = post_data + "&field6=";
+      post_data = post_data + String(sensorValues[ACC_Z], 1);
+      Serial.println("Data to be send:");
+      Serial.println(post_data);
+      client.println("POST /update HTTP/1.1");
+      client.println("Host: api.thingspeak.com");
+      client.println("Connection: close");
+      client.println("X-THINGSPEAKAPIKEY: " + WRITEAPIKEY_5);
+      client.println("Content-Type: application/x-www-form-urlencoded");
+      client.print("Content-Length: ");
+      int thisLength = post_data.length();
+      client.println(thisLength);
+      client.println();
+      client.println(post_data);
+      client.println();
+      //delay(1000);
+      timer_iot_timeout = millis();
+      while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      timer_iot_timeout = millis();
+      while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
+      {
+        while (client.available() > 0)
+        {
+          char symb = client.read();
+          Serial.print(symb);
+          timer_iot_timeout = millis();
+        }
+      }
+      client.stop();
+      Serial.println("Packet successfully sent!");
+    }
+  }
+}
+
+// Automatic function control
+void controlDevices_1()
+{
+  Serial.println("Run automatic function...");
+  Serial.println();
+
+  // Automatic off switched-on valves
+  if (controlValues[VALVE_POWER1])
+  {
+    controlValues[VALVE_POWER1] = false;
+  }
+  if (controlValues[VALVE_POWER2])
+  {
+    controlValues[VALVE_POWER2] = false;
+  }
+
+  // Automatic on output valve if minimum moisture
+  float min_moisture = 100;
+  int flag_moisture = false;
+  for (int u = SOIL_MOISTURE1; u <= SOIL_MOISTURE9; u++)
+  {
+    if (sensorFlags[u])
+    {
+      flag_moisture = true;
+      if (sensorValues[u] < min_moisture)
+      {
+        min_moisture = sensorValues[u];
+      }
+    }
+  }
+  if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture))
+  {
+    controlValues[VALVE_POWER2] = true;
+  }
+  Serial.println("Min soil moisture: " + String(min_moisture, 1));
+  Serial.println();
+
+  // Read control values and power devices
+  digitalWrite(RELAY_PIN2, controlValues[VALVE_POWER2]);
+}
+
+// Reset software watchdog timer
+void watchdog_reset()
+{
+  wdt_timer = 0;
+}
+
+// Interrupt service routine for timer3 overflow
+ISR(TIMER3_OVF_vect)
+{
+  wdt_timer = wdt_timer + 1;
+  if (wdt_timer > MAX_WDT)
+  {
+    wdt_timer = 0;
+    TIMSK3 = 0;
+    TCNT3 = 0;
+    TCCR3A = 0;
+    TCCR3B = 0;
+    Serial.println("WDT! Resetting...\n");
+    delay(1000);
+    pinMode(HRESETPIN, OUTPUT);
+    digitalWrite(HRESETPIN, LOW);
+  }
+  TCNT3 = timer3_counter;
+}

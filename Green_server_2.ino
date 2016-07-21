@@ -66,7 +66,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define LCD_UPDATE_TIME 10000
 
 // Period of print data to terminal
-#define TERM_UPDATE_TIME 60000
+#define TERM_UPDATE_TIME 30000
 
 // Period of read BH1750 light sensor
 #define LIGHT_UPDATE_TIME 60000
@@ -93,13 +93,13 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define SEISMO_UPDATE_TIME 60000
 
 // Period of automatic function control
-#define AUTO_UPDATE_TIME 60000
+#define AUTO_UPDATE_TIME 1000
 
 // Period of read MQ2 gas sensor
-#define MQ2_UPDATE_TIME 10000
+#define MQ2_UPDATE_TIME 60000
 
 // Period of read HC-SR04 distance sensor
-#define HCSR04_UPDATE_TIME 1000
+#define HCSR04_UPDATE_TIME 2000
 
 // Period of read buttons
 #define BUTTONS_UPDATE_TIME 1000
@@ -281,7 +281,7 @@ Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(10345);
 void setup()
 {
   // Init serial port
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) {}
 
   // Init onboard LED
@@ -559,6 +559,28 @@ void loop()
           sensorValues[sensor_addr + 8] = sensor_moisture;
           sensorFlags[sensor_addr + 8] = true;
         }
+        watchdog_reset();
+        // Automatic on output valve if minimum moisture
+        float min_moisture = 100;
+        int flag_moisture = false;
+        for (int u = SOIL_MOISTURE1; u <= SOIL_MOISTURE9; u++)
+        {
+          if (sensorFlags[u])
+          {
+            flag_moisture = true;
+            if (sensorValues[u] < min_moisture)
+            {
+              min_moisture = sensorValues[u];
+            }
+          }
+        }
+        if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture))
+        {
+          controlTimers[VALVE_POWER2] = 60;
+        }
+        Serial.println("Min soil moisture: " + String(min_moisture, 1));
+        Serial.println();
+        watchdog_reset();
       }
       digitalWrite(LED_PIN, LOW);
       watchdog_reset();
@@ -875,7 +897,9 @@ void printSerialData()
     Serial.print("Control");
     Serial.print(u);
     Serial.print(": ");
-    Serial.println(String(controlValues[u]));
+    Serial.print(String(controlTimers[u]) + "\t\t");
+    Serial.print(String(controlValues[u]) + "\t\t");
+    Serial.println(String(controlFlags[u]));
   }
   Serial.println();
 }
@@ -1136,6 +1160,11 @@ void sendDataIot_ThingSpeak_4()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
+      // Clear control flags
+      for (int u = 0; u < controlCount; u++)
+      {
+        controlFlags[u] = false;
+      }
       watchdog_reset();
     }
   }
@@ -1206,48 +1235,28 @@ void sendDataIot_ThingSpeak_5()
 // Automatic function control
 void controlDevices_1()
 {
-  watchdog_reset();
-
-  Serial.println("Run automatic function...");
-  Serial.println();
-
-  // Automatic off switched-on valves
-  if (controlValues[VALVE_POWER1])
+  // Decrement control timers and automatic off switched-on devices
+  for (int u = 0; u < controlCount; u++)
   {
-    controlValues[VALVE_POWER1] = false;
-  }
-  if (controlValues[VALVE_POWER2])
-  {
-    controlValues[VALVE_POWER2] = false;
-  }
-
-  watchdog_reset();
-
-  // Automatic on output valve if minimum moisture
-  float min_moisture = 100;
-  int flag_moisture = false;
-  for (int u = SOIL_MOISTURE1; u <= SOIL_MOISTURE9; u++)
-  {
-    if (sensorFlags[u])
+    controlTimers[u] = controlTimers[u] - 1;
+    if (controlTimers[u] <= 0)
     {
-      flag_moisture = true;
-      if (sensorValues[u] < min_moisture)
-      {
-        min_moisture = sensorValues[u];
-      }
+      controlTimers[u] = 0;
+      controlValues[u] = false;
+      //controlFlags[u] = false;
+    }
+    else
+    {
+      controlValues[u] = true;
+      controlFlags[u] = true;
     }
   }
-  if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture))
-  {
-    controlValues[VALVE_POWER2] = true;
-  }
-  Serial.println("Min soil moisture: " + String(min_moisture, 1));
-  Serial.println();
-
   watchdog_reset();
 
   // Read control values and power devices
+  digitalWrite(RELAY_PIN1, controlValues[VALVE_POWER1]);
   digitalWrite(RELAY_PIN2, controlValues[VALVE_POWER2]);
+  digitalWrite(RELAY_PIN3, controlValues[LAMP_POWER1]);
 }
 
 // Reset software watchdog timer

@@ -529,12 +529,12 @@ void loop()
     // Increment timer of input valve
     if ((buttonStates[BUTTON1] == 0))
     {
-      controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 60;
+      controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 10;
     }
     // Increment timer of output valve
     if ((buttonStates[BUTTON2] == 0))
     {
-      controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 60;
+      controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 10;
     }
     // Switch off all valves
     if ((buttonStates[BUTTON3] == 0))

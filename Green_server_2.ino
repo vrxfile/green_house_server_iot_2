@@ -99,10 +99,10 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define MQ2_UPDATE_TIME 60000
 
 // Period of read HC-SR04 distance sensor
-#define HCSR04_UPDATE_TIME 2000
+#define HCSR04_UPDATE_TIME 3000
 
 // Period of read buttons
-#define BUTTONS_UPDATE_TIME 2000
+#define BUTTONS_UPDATE_TIME 1000
 
 // Period of autoreset
 #define HRST_UPDATE_TIME 7200000
@@ -508,6 +508,13 @@ void loop()
   {
     // Read sensor
     readSensorHCSR04(); watchdog_reset();
+    // Detect object and switch on lamps
+    if ((sensorValues[MOTION_DETECT] < 50))
+    {
+      // Increment lamps timer
+      controlTimers[LAMP_POWER1] = 60;
+      watchdog_reset();
+    }
     // Print data to terminal
     Serial.println("HC-SR04: " + String(sensorValues[MOTION_DETECT], 3) + " cm");
     // Reset timer
@@ -519,9 +526,34 @@ void loop()
   {
     // Read buttons
     readButtons(); watchdog_reset();
-    // Set page number of LCD to 5 (control device timers)
-    page_number = 5;
-    // Increment timers or switch off control devices
+    // Increment timer of input valve
+    if ((buttonStates[BUTTON1] == 0))
+    {
+      controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 60;
+    }
+    // Increment timer of output valve
+    if ((buttonStates[BUTTON2] == 0))
+    {
+      controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 60;
+    }
+    // Switch off all valves
+    if ((buttonStates[BUTTON3] == 0))
+    {
+      controlTimers[VALVE_POWER1] = 0;
+      controlTimers[VALVE_POWER2] = 0;
+    }
+    watchdog_reset();
+    // Print control device timers
+    if ((buttonStates[BUTTON1] == 0) || (buttonStates[BUTTON2] == 0) || (buttonStates[BUTTON3] == 0))
+    {
+      // Print control timers to LCD
+      lcd.clear();
+      lcd.setCursor(0, 0); lcd_printstr("VALVE1 = " + String(controlTimers[VALVE_POWER1]));
+      lcd.setCursor(0, 1); lcd_printstr("VALVE2 = " + String(controlTimers[VALVE_POWER2]));
+      lcd.setCursor(0, 2); lcd_printstr("WINDOW = " + String(controlTimers[WINDOW_STATE1]));
+      lcd.setCursor(0, 3); lcd_printstr("LAMPS  = " + String(controlTimers[LAMP_POWER1]));
+      watchdog_reset();
+    }
     // Print data to terminal
     Serial.println("Buttons: " + String(buttonStates[BUTTON1]) + " " + String(buttonStates[BUTTON2]) + " " + String(buttonStates[BUTTON3]));
     // Reset timer

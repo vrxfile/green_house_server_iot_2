@@ -46,9 +46,9 @@ DHT dht22_1(DHT22_PIN1, DHT22);
 #define MQ2_PIN      A0
 
 // Buttons pins
-#define BUTTON1      A3
-#define BUTTON2      A4
-#define BUTTON3      A5
+#define BUTTON_PIN1  A3
+#define BUTTON_PIN2  A4
+#define BUTTON_PIN3  A5
 
 // HC-SR04 distance sensor pins
 #define US1_trigPin 26
@@ -210,7 +210,6 @@ float sensorValues[sensorCount] = {0};
 #define DEVICE_TEMP    35
 #define GAS_CONC       36
 #define MOTION_DETECT  37
-
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
 
@@ -221,12 +220,18 @@ int controlValues[controlCount] = {0};
 #define VALVE_POWER2  1
 #define WINDOW_STATE1 2
 #define LAMP_POWER1   3
-
 // Flags of control devices
-int controlFlags[controlCount] = {0};
-
+uint8_t controlFlags[controlCount] = {0};
 // Timers for control devices
 int controlTimers[controlCount] = {0};
+
+// States and flags of buttons
+#define buttonCount 3
+uint8_t buttonStates[buttonCount] = {0};
+uint8_t buttonFlags[buttonCount] = {0};
+#define BUTTON1  0
+#define BUTTON2  1
+#define BUTTON3  2
 
 // Timeouts of IoT server
 #define IOT_TIMEOUT1 5000
@@ -299,9 +304,9 @@ void setup()
   pinMode(US1_echoPin, INPUT);
 
   // Init buttons pins with pullup's
-  pinMode(BUTTON1, INPUT_PULLUP);
-  pinMode(BUTTON2, INPUT_PULLUP);
-  pinMode(BUTTON3, INPUT_PULLUP);
+  pinMode(BUTTON_PIN1, INPUT_PULLUP);
+  pinMode(BUTTON_PIN2, INPUT_PULLUP);
+  pinMode(BUTTON_PIN3, INPUT_PULLUP);
 
   // Init relay outputs
   pinMode(RELAY_PIN1, OUTPUT);
@@ -509,6 +514,20 @@ void loop()
     timer_hcsr04 = millis();
   }
 
+  // Read buttons
+  if (millis() > timer_buttons + BUTTONS_UPDATE_TIME)
+  {
+    // Read buttons
+    readButtons(); watchdog_reset();
+    // Set page number of LCD to 5 (control device timers)
+    page_number = 5;
+    // Increment timers or switch off control devices
+    // Print data to terminal
+    Serial.println("Buttons: " + String(buttonStates[BUTTON1]) + " " + String(buttonStates[BUTTON2]) + " " + String(buttonStates[BUTTON3]));
+    // Reset timer
+    timer_buttons = millis();
+  }
+
   // Reset flags of radio sensors
   if (millis() > timer_radioreset + RADIORESET_UPDATE_TIME)
   {
@@ -710,10 +729,10 @@ void loop()
         break;
       case 5:
         lcd.clear();
-        lcd.setCursor(0, 0); lcd_printstr("VALVE1 = " + String(controlValues[VALVE_POWER1]));
-        lcd.setCursor(0, 1); lcd_printstr("VALVE2 = " + String(controlValues[VALVE_POWER2]));
-        lcd.setCursor(0, 2); lcd_printstr("WINDOW = " + String(controlValues[WINDOW_STATE1]));
-        lcd.setCursor(0, 3); lcd_printstr("LAMPS  = " + String(controlValues[LAMP_POWER1]));
+        lcd.setCursor(0, 0); lcd_printstr("VALVE1 = " + String(controlTimers[VALVE_POWER1]));
+        lcd.setCursor(0, 1); lcd_printstr("VALVE2 = " + String(controlTimers[VALVE_POWER2]));
+        lcd.setCursor(0, 2); lcd_printstr("WINDOW = " + String(controlTimers[WINDOW_STATE1]));
+        lcd.setCursor(0, 3); lcd_printstr("LAMPS  = " + String(controlTimers[LAMP_POWER1]));
         watchdog_reset();
         break;
       case 6:
@@ -895,6 +914,17 @@ void readSensorHCSR04()
   {
     sensorFlags[MOTION_DETECT] = true;
   }
+}
+
+// Read buttons
+void readButtons()
+{
+  buttonStates[BUTTON1] = digitalRead(BUTTON_PIN1);
+  buttonStates[BUTTON2] = digitalRead(BUTTON_PIN2);
+  buttonStates[BUTTON3] = digitalRead(BUTTON_PIN3);
+  buttonFlags[BUTTON1] = buttonStates[BUTTON1];
+  buttonFlags[BUTTON2] = buttonStates[BUTTON2];
+  buttonFlags[BUTTON3] = buttonStates[BUTTON3];
 }
 
 // Print all sensors data to serial terminal

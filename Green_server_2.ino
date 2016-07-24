@@ -102,7 +102,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define HCSR04_UPDATE_TIME 2000
 
 // Period of read buttons
-#define BUTTONS_UPDATE_TIME 1000
+#define BUTTONS_UPDATE_TIME 2000
 
 // Period of autoreset
 #define HRST_UPDATE_TIME 7200000
@@ -434,6 +434,10 @@ void loop()
     readSensorDHT11_1(); watchdog_reset();
     readSensorDHT11_2(); watchdog_reset();
     readSensorDHT22_1(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("DHT11_1: " + String(sensorValues[AIR_TEMP1], 3) + " *C\t\t" + String(sensorValues[AIR_HUM1], 3) + " %");
+    Serial.println("DHT11_2: " + String(sensorValues[AIR_TEMP2], 3) + " *C\t\t" + String(sensorValues[AIR_HUM2], 3) + " %");
+    Serial.println("DHT22_1: " + String(sensorValues[AIR_TEMP3], 3) + " *C\t\t" + String(sensorValues[AIR_HUM3], 3) + " %");
     // Reset timer
     timer_dht = millis();
   }
@@ -443,6 +447,8 @@ void loop()
   {
     // Read sensor
     readSensorBH1750_1(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("BH1750: " + String(sensorValues[SUN_LIGHT1], 3) + " lux");
     // Reset timer
     timer_light = millis();
   }
@@ -452,6 +458,8 @@ void loop()
   {
     // Read sensor
     readSensorBMP085_1(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("BMP085: " + String(sensorValues[AIR_PRESSURE1], 3) + " mm Hg\t\t" + String(sensorValues[DEVICE_TEMP], 3) + " *C");
     // Reset timer
     timer_press = millis();
   }
@@ -461,6 +469,8 @@ void loop()
   {
     // Read sensor
     readSensorHMC5883L_1(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("HMC5883L: " + String(sensorValues[MAG_X], 3) + " uT\t\t" + String(sensorValues[MAG_Y], 3) + " uT\t\t" + String(sensorValues[MAG_Z], 3) + " uT");
     // Reset timer
     timer_magnetic = millis();
   }
@@ -470,6 +480,9 @@ void loop()
   {
     // Read sensor
     readSensorACCGYRO_1(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("ADXL345: " + String(sensorValues[ACC_X], 3) + " m/s^2\t\t" + String(sensorValues[ACC_Y], 3) + " m/s^2\t\t" + String(sensorValues[ACC_Z], 3) + " m/s^2");
+    Serial.println("L3G4200D: " + String(sensorValues[GYR_X], 3) + " grad/s\t\t" + String(sensorValues[GYR_Y], 3) + " grad/s\t\t" + String(sensorValues[GYR_Z], 3) + " grad/s");
     // Reset timer
     timer_seismo = millis();
   }
@@ -479,6 +492,8 @@ void loop()
   {
     // Read sensor
     readSensorMQ2(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("MQ-2: " + String(sensorValues[GAS_CONC], 3) + " %");
     // Reset timer
     timer_mq2 = millis();
   }
@@ -488,6 +503,8 @@ void loop()
   {
     // Read sensor
     readSensorHCSR04(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("HC-SR04: " + String(sensorValues[MOTION_DETECT], 3) + " cm");
     // Reset timer
     timer_hcsr04 = millis();
   }

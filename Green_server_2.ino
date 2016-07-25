@@ -157,19 +157,21 @@ long timer_hreset = 0;
 long timer3_counter = 0;
 long wdt_timer = 0;
 
-// IoT server network parameters
-char iot_server[] = "cttit5402.cloud.thingworx.com";      // Name address for Google (using DNS)
-IPAddress iot_address(52, 87, 101, 142);
-char appKey[] = "dacefda9-bca7-47bb-b2dd-c57c7651749d";   // APP access key for ThingWorx
-char thingName[] = "SmartGreen";                          // Name of your Thing in ThingWorx
-char serviceName[] = "setAll";                            // Name of your Service (see above)
+// Thingworx IoT server network parameters
+char thingworx_server[] = "cttit5402.cloud.thingworx.com";
+IPAddress thingworx_address(52, 87, 101, 142);
+char thingworx_appKey[] = "3c0d1906-f333-4cfd-8c60-89408c06d121";
+char thingworx_thingName[] = "MGBot_Greenhouse_Thing";
+char thingworx_serviceName[] = "MGBotSetAllParameters";
+const int thingworx_port = 80;
 
 // IoT server sensor parameters
-#define sensorCount 38                                    // How many values you will be pushing to ThingWorx
+#define sensorCount 42                                    // How many values you will be pushing to ThingWorx
 char* sensorNames[] = {"soil_temp1", "soil_temp2", "soil_temp3", "soil_temp4", "soil_temp5", "soil_temp6", "soil_temp7", "soil_temp8", "soil_temp9"
                        , "soil_moisture1", "soil_moisture2", "soil_moisture3", "soil_moisture4", "soil_moisture5", "soil_moisture6", "soil_moisture7", "soil_moisture8", "soil_moisture9"
                        , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1", "mag_x", "mag_y", "mag_z"
                        , "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "device_temp", "gas_conc", "motion_detect"
+                       , "valve_timer1", "valve_timer2", "window_timer1", "lamps_timer1"
                       };
 float sensorValues[sensorCount] = {0};
 #define SOIL_TEMP1     0
@@ -210,6 +212,10 @@ float sensorValues[sensorCount] = {0};
 #define DEVICE_TEMP    35
 #define GAS_CONC       36
 #define MOTION_DETECT  37
+#define VALVE_TIMER1   38
+#define VALVE_TIMER2   39
+#define WINDOW_TIMER1  40
+#define LAMPS_TIMER1   41
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
 
@@ -1320,6 +1326,107 @@ void sendDataIot_ThingSpeak_5()
       client.stop();
       Serial.println("Packet successfully sent!");
       watchdog_reset();
+    }
+  }
+}
+
+// Send data to ThingWorx and receive control packets
+void sendDataIot_ThingWorx_1()
+{
+  Serial.print("Connecting to ");
+  Serial.print(thingworx_address);
+  Serial.println("...");
+  if (client.connect(thingworx_address, thingworx_port))
+  {
+    watchdog_reset();
+    if (client.connected())
+    {
+      watchdog_reset();
+      Serial.println("Sending data to ThingWorx server...\n");
+      Serial.print("POST /Thingworx/Things/");
+      client.print("POST /Thingworx/Things/");
+      Serial.print(thingworx_thingName);
+      client.print(thingworx_thingName);
+      Serial.print("/Services/");
+      client.print("/Services/");
+      Serial.print(thingworx_serviceName);
+      client.print(thingworx_serviceName);
+      Serial.print("?appKey=");
+      client.print("?appKey=");
+      Serial.print(thingworx_appKey);
+      client.print(thingworx_appKey);
+      Serial.print("&method=post&x-thingworx-session=true");
+      client.print("&method=post&x-thingworx-session=true");
+      watchdog_reset();
+      for (int idx = 0; idx < sensorCount; idx ++)
+      {
+        Serial.print("&");
+        client.print("&");
+        Serial.print(sensorNames[idx]);
+        client.print(sensorNames[idx]);
+        Serial.print("=");
+        client.print("=");
+        Serial.print(sensorValues[idx]);
+        client.print(sensorValues[idx]);
+      }
+      watchdog_reset();
+      Serial.println(" HTTP/1.1");
+      client.println(" HTTP/1.1");
+      Serial.println("Accept: application/json");
+      client.println("Accept: application/json");
+      Serial.print("Host: ");
+      client.print("Host: ");
+      Serial.println(thingworx_server);
+      client.println(thingworx_server);
+      Serial.println("Content-Type: application/json");
+      client.println("Content-Type: application/json");
+      Serial.println();
+      client.println();
+      watchdog_reset();
+      timer_iot_timeout = millis();
+      while ((client.available() == 0) && (millis() < timer_iot_timeout + IOT_TIMEOUT1));
+      watchdog_reset();
+      int iii = 0;
+      bool currentLineIsBlank = true;
+      bool flagJSON = false;
+      timer_iot_timeout = millis();
+      while ((millis() < timer_iot_timeout + IOT_TIMEOUT2) && (client.connected()))
+      {
+        while (client.available() > 0)
+        {
+          char symb = client.read();
+          Serial.print(symb);
+          if (symb == '{')
+          {
+            flagJSON = true;
+          }
+          else if (symb == '}')
+          {
+            flagJSON = false;
+          }
+          if (flagJSON == true)
+          {
+            buff[iii] = symb;
+            iii ++;
+          }
+          timer_iot_timeout = millis();
+        }
+      }
+      buff[iii] = '}';
+      buff[iii + 1] = '\0';
+      Serial.println(buff);
+      client.stop();
+      watchdog_reset();
+      StaticJsonBuffer<BUFF_LENGTH> jsonBuffer;
+      JsonObject& json_array = jsonBuffer.parseObject(buff);
+      //pump_state = json_array["pump"];
+      //light_state = json_array["light"];
+      //window_state = json_array["roof"];
+      //Serial.println("Pump state:   " + String(pump_state));
+      //Serial.println("Light state:  " + String(light_state));
+      //Serial.println("Window state: " + String(window_state));
+      //Serial.println();
+      Serial.println("Packet successfully sent...");
     }
   }
 }

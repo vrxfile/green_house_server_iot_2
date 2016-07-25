@@ -813,18 +813,21 @@ void loop()
     watchdog_reset();
     // Send air sensors data
     sendDataIot_ThingSpeak_1(); watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("20%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("15%"); watchdog_reset();
     // Send soil temperature sensors data
     sendDataIot_ThingSpeak_2(); watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("40%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("30%"); watchdog_reset();
     // Send soil moisture sensors data
     sendDataIot_ThingSpeak_3(); watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("45%"); watchdog_reset();
     // Send controls data
     sendDataIot_ThingSpeak_4(); watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("80%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
     // Send magnetic and seismo data
     sendDataIot_ThingSpeak_5(); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("75%");
+    // Send data to ThingWorx and receive control packets
+    sendDataIot_ThingWorx_1(); watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("100%");
     lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
     watchdog_reset();

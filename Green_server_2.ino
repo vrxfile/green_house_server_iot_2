@@ -799,16 +799,29 @@ void loop()
   // Send data to IoT ThingSpeak
   if (millis() > timer_iot + IOT_UPDATE_TIME)
   {
+    // Print message to LCD
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd_printstr("Sending data...");
+    lcd.setCursor(0, 1); lcd_printstr("Please wait...");
+    lcd.setCursor(0, 2); lcd_printstr("0%");
+    watchdog_reset();
     // Send air sensors data
     sendDataIot_ThingSpeak_1(); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("20%"); watchdog_reset();
     // Send soil temperature sensors data
     sendDataIot_ThingSpeak_2(); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("40%"); watchdog_reset();
     // Send soil moisture sensors data
     sendDataIot_ThingSpeak_3(); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
     // Send controls data
     sendDataIot_ThingSpeak_4(); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("80%"); watchdog_reset();
     // Send magnetic and seismo data
     sendDataIot_ThingSpeak_5(); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("100%");
+    lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
+    watchdog_reset();
     // Reset timer
     timer_iot = millis();
   }

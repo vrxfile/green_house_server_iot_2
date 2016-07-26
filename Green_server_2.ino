@@ -12,7 +12,7 @@
 #include <Adafruit_HMC5883_U.h>
 
 // Minimum soil moisture constant
-#define MIN_SOIL_MOISTURE 10.0
+#define MIN_SOIL_MOISTURE 30.0
 
 // LED pin
 #define LED_PIN      13
@@ -519,6 +519,8 @@ void loop()
     {
       // Increment lamps timer
       controlTimers[LAMP_POWER1] = 60;
+      sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
+      sensorFlags[LAMPS_TIMER1] = true;
       watchdog_reset();
     }
     // Print data to terminal
@@ -535,18 +537,26 @@ void loop()
     // Increment timer of input valve
     if ((buttonStates[BUTTON1] == 0))
     {
-      controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 10;
+      controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 50;
+      sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+      sensorFlags[VALVE_TIMER1] = true;
     }
     // Increment timer of output valve
     if ((buttonStates[BUTTON2] == 0))
     {
-      controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 10;
+      controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 50;
+      sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+      sensorFlags[VALVE_TIMER2] = true;
     }
     // Switch off all valves
     if ((buttonStates[BUTTON3] == 0))
     {
       controlTimers[VALVE_POWER1] = 0;
       controlTimers[VALVE_POWER2] = 0;
+      sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+      sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+      sensorFlags[VALVE_TIMER1] = false;
+      sensorFlags[VALVE_TIMER2] = false;
     }
     watchdog_reset();
     // Print control device timers
@@ -1445,7 +1455,6 @@ void controlDevices_1()
     {
       controlTimers[u] = 0;
       controlValues[u] = false;
-      //controlFlags[u] = false;
     }
     else
     {
@@ -1454,6 +1463,12 @@ void controlDevices_1()
     }
   }
   watchdog_reset();
+
+  // Copy timers to sensors values array
+  sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+  sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+  sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
+  sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
 
   // Read control values and power devices
   digitalWrite(RELAY_PIN1, controlValues[VALVE_POWER1]);

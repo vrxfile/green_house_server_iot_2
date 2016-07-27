@@ -230,6 +230,9 @@ int controlValues[controlCount] = {0};
 uint8_t controlFlags[controlCount] = {0};
 // Timers for control devices
 int controlTimers[controlCount] = {0};
+// Counters for control devices
+#define MAX_CONTROL_COUNT 50
+int controlCounters[controlCount] = {0};
 
 // States and flags of buttons
 #define buttonCount 3
@@ -660,7 +663,15 @@ void loop()
         }
         if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture))
         {
-          controlTimers[VALVE_POWER2] = 60;
+          controlCounters[VALVE_POWER2] = controlCounters[VALVE_POWER2] + 1;
+          if (controlCounters[VALVE_POWER2] <= MAX_CONTROL_COUNT)
+          {
+            controlTimers[VALVE_POWER2] = 60;
+          }
+        }
+        if ((min_moisture >= MIN_SOIL_MOISTURE) && (flag_moisture))
+        {
+          controlCounters[VALVE_POWER2] = 0;
         }
         Serial.println("Min soil moisture: " + String(min_moisture, 1));
         Serial.println();
@@ -1010,7 +1021,8 @@ void printSerialData()
     Serial.print(": ");
     Serial.print(String(controlTimers[u]) + "\t\t");
     Serial.print(String(controlValues[u]) + "\t\t");
-    Serial.println(String(controlFlags[u]));
+    Serial.print(String(controlFlags[u]) + "\t\t");
+    Serial.println(String(controlCounters[u]));
   }
   Serial.println();
 }

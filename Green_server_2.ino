@@ -166,12 +166,12 @@ char thingworx_serviceName[] = "MGBotSetAllParameters";
 const int thingworx_port = 80;
 
 // IoT server sensor parameters
-#define sensorCount 42                                    // How many values you will be pushing to ThingWorx
+#define sensorCount 44
 char* sensorNames[] = {"soil_temp1", "soil_temp2", "soil_temp3", "soil_temp4", "soil_temp5", "soil_temp6", "soil_temp7", "soil_temp8", "soil_temp9"
                        , "soil_moisture1", "soil_moisture2", "soil_moisture3", "soil_moisture4", "soil_moisture5", "soil_moisture6", "soil_moisture7", "soil_moisture8", "soil_moisture9"
                        , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1", "mag_x", "mag_y", "mag_z"
                        , "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "device_temp", "gas_conc", "motion_detect"
-                       , "valve_timer1", "valve_timer2", "window_timer1", "lamps_timer1"
+                       , "valve_timer1", "valve_timer2", "window_timer1", "lamps_timer1", "network_time", "radio_counter"
                       };
 float sensorValues[sensorCount] = {0};
 #define SOIL_TEMP1     0
@@ -216,6 +216,8 @@ float sensorValues[sensorCount] = {0};
 #define VALVE_TIMER2   39
 #define WINDOW_TIMER1  40
 #define LAMPS_TIMER1   41
+#define NETWORK_TIME   42
+#define RADIO_COUNTER  43
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
 
@@ -233,6 +235,10 @@ int controlTimers[controlCount] = {0};
 // Counters for control devices
 #define MAX_CONTROL_COUNT 50
 int controlCounters[controlCount] = {0};
+
+// Addresses of radio sensors
+#define MIN_RADIO_ADDR 1
+#define MAX_RADIO_ADDR 9
 
 // States and flags of buttons
 #define buttonCount 3
@@ -629,7 +635,7 @@ void loop()
       float sensor_moisture = json_array["M"];
       float sensor_temperature = json_array["T"];
       watchdog_reset();
-      if ((sensor_addr >= 1) && (sensor_addr <= 9))
+      if ((sensor_addr >= MIN_RADIO_ADDR) && (sensor_addr <= MAX_RADIO_ADDR))
       {
         Serial.println("Node address: " + String(sensor_addr));
         Serial.println("Sensor type: " + String(sensor_type));
@@ -661,12 +667,13 @@ void loop()
             }
           }
         }
+        watchdog_reset();
         if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture))
         {
           controlCounters[VALVE_POWER2] = controlCounters[VALVE_POWER2] + 1;
           if (controlCounters[VALVE_POWER2] <= MAX_CONTROL_COUNT)
           {
-            controlTimers[VALVE_POWER2] = 60;
+            controlTimers[VALVE_POWER2] = 300;
           }
         }
         if ((min_moisture >= MIN_SOIL_MOISTURE) && (flag_moisture))
@@ -676,6 +683,9 @@ void loop()
         Serial.println("Min soil moisture: " + String(min_moisture, 1));
         Serial.println();
         watchdog_reset();
+        // Increment radio packets couner
+        sensorValues[RADIO_COUNTER] = sensorValues[RADIO_COUNTER] + 1;
+        sensorFlags[RADIO_COUNTER] = true;
       }
       digitalWrite(LED_PIN, LOW);
       watchdog_reset();
@@ -708,72 +718,48 @@ void loop()
         break;
       case 2:
         lcd.clear();
-        if (sensorFlags[SOIL_TEMP1])
-        {
+        if (sensorFlags[SOIL_TEMP1]) {
           lcd.setCursor(0, 0); lcd_printstr("R_T1 = " + String(sensorValues[SOIL_TEMP1], 1) + " *C");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 0); lcd_printstr("R_T1 = NO DATA");
         }
-        if (sensorFlags[SOIL_MOISTURE1])
-        {
+        if (sensorFlags[SOIL_MOISTURE1]) {
           lcd.setCursor(0, 1); lcd_printstr("R_M1 = " + String(sensorValues[SOIL_MOISTURE1], 1) + " %");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 1); lcd_printstr("R_M1 = NO DATA");
         }
-        if (sensorFlags[SOIL_TEMP2])
-        {
+        if (sensorFlags[SOIL_TEMP2]) {
           lcd.setCursor(0, 2); lcd_printstr("R_T2 = " + String(sensorValues[SOIL_TEMP2], 1) + " *C");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 2); lcd_printstr("R_T2 = NO DATA");
         }
-        if (sensorFlags[SOIL_MOISTURE2])
-        {
+        if (sensorFlags[SOIL_MOISTURE2]) {
           lcd.setCursor(0, 3); lcd_printstr("R_M2 = " + String(sensorValues[SOIL_MOISTURE2], 1) + " %");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 3); lcd_printstr("R_M2 = NO DATA");
         }
         watchdog_reset();
         break;
       case 3:
         lcd.clear();
-        if (sensorFlags[SOIL_TEMP3])
-        {
+        if (sensorFlags[SOIL_TEMP3]) {
           lcd.setCursor(0, 0); lcd_printstr("R_T3 = " + String(sensorValues[SOIL_TEMP3], 1) + " *C");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 0); lcd_printstr("R_T3 = NO DATA");
         }
-        if (sensorFlags[SOIL_MOISTURE3])
-        {
+        if (sensorFlags[SOIL_MOISTURE3]) {
           lcd.setCursor(0, 1); lcd_printstr("R_M3 = " + String(sensorValues[SOIL_MOISTURE3], 1) + " %");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 1); lcd_printstr("R_M3 = NO DATA");
         }
-        if (sensorFlags[SOIL_TEMP4])
-        {
+        if (sensorFlags[SOIL_TEMP4]) {
           lcd.setCursor(0, 2); lcd_printstr("R_T4 = " + String(sensorValues[SOIL_TEMP4], 1) + " *C");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 2); lcd_printstr("R_T4 = NO DATA");
         }
-        if (sensorFlags[SOIL_MOISTURE4])
-        {
+        if (sensorFlags[SOIL_MOISTURE4]) {
           lcd.setCursor(0, 3); lcd_printstr("R_M4 = " + String(sensorValues[SOIL_MOISTURE4], 1) + " %");
-        }
-        else
-        {
+        } else {
           lcd.setCursor(0, 3); lcd_printstr("R_M4 = NO DATA");
         }
         watchdog_reset();
@@ -798,6 +784,8 @@ void loop()
         lcd.clear();
         lcd.setCursor(0, 0); lcd_printstr("GAS  = " + String(sensorValues[GAS_CONC], 1) + " %");
         lcd.setCursor(0, 1); lcd_printstr("DIST = " + String(sensorValues[MOTION_DETECT], 1) + " cm");
+        lcd.setCursor(0, 2); lcd_printstr("NETT = " + String(sensorValues[NETWORK_TIME], 0) + " ms");
+        lcd.setCursor(0, 3); lcd_printstr("RCNT = " + String(sensorValues[RADIO_COUNTER], 0));
         watchdog_reset();
         break;
       default:
@@ -823,9 +811,12 @@ void loop()
     timer_term = millis();
   }
 
-  // Send data to IoT ThingSpeak
+  // Send data to IoT servers and measure send data time
   if (millis() > timer_iot + IOT_UPDATE_TIME)
   {
+    unsigned long beg_timer = 0;
+    unsigned long end_timer = 0;
+    float network_time = 0;
     // Print message to LCD
     lcd.clear();
     lcd.setCursor(0, 0); lcd_printstr("Sending data...");
@@ -833,25 +824,60 @@ void loop()
     lcd.setCursor(0, 2); lcd_printstr("0%");
     watchdog_reset();
     // Send air sensors data
-    sendDataIot_ThingSpeak_1(); watchdog_reset();
+    beg_timer = millis();
+    sendDataIot_ThingSpeak_1();
+    end_timer = millis() - beg_timer;
+    network_time = network_time + end_timer;
+    watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("15%"); watchdog_reset();
     // Send soil temperature sensors data
-    sendDataIot_ThingSpeak_2(); watchdog_reset();
+    beg_timer = millis();
+    sendDataIot_ThingSpeak_2();
+    end_timer = millis() - beg_timer;
+    network_time = network_time + end_timer;
+    watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("30%"); watchdog_reset();
     // Send soil moisture sensors data
-    sendDataIot_ThingSpeak_3(); watchdog_reset();
+    beg_timer = millis();
+    sendDataIot_ThingSpeak_3();
+    end_timer = millis() - beg_timer;
+    network_time = network_time + end_timer;
+    watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("45%"); watchdog_reset();
     // Send controls data
-    sendDataIot_ThingSpeak_4(); watchdog_reset();
+    beg_timer = millis();
+    sendDataIot_ThingSpeak_4();
+    end_timer = millis() - beg_timer;
+    network_time = network_time + end_timer;
+    watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
     // Send magnetic and seismo data
-    sendDataIot_ThingSpeak_5(); watchdog_reset();
+    beg_timer = millis();
+    sendDataIot_ThingSpeak_5();
+    end_timer = millis() - beg_timer;
+    network_time = network_time + end_timer;
+    watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("75%");
     // Send data to ThingWorx and receive control packets
-    sendDataIot_ThingWorx_1(); watchdog_reset();
+    beg_timer = millis();
+    sendDataIot_ThingWorx_1();
+    end_timer = millis() - beg_timer;
+    network_time = network_time + end_timer;
+    watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("100%");
     lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
     watchdog_reset();
+    // Clear control flags
+    for (int u = 0; u < controlCount; u++)
+    {
+      controlFlags[u] = false;
+    }
+    // Clear radio packets counter
+    sensorValues[RADIO_COUNTER] = 0;
+    sensorFlags[RADIO_COUNTER] = false;
+    // Network data send time
+    sensorValues[NETWORK_TIME] = network_time;
+    sensorFlags[NETWORK_TIME] = true;
     // Reset timer
     timer_iot = millis();
   }
@@ -1253,6 +1279,10 @@ void sendDataIot_ThingSpeak_4()
       post_data = post_data + String(sensorValues[DEVICE_TEMP], 1);
       post_data = post_data + "&field6=";
       post_data = post_data + String(sensorValues[MOTION_DETECT], 1);
+      post_data = post_data + "&field7=";
+      post_data = post_data + String(sensorValues[NETWORK_TIME], 0);
+      post_data = post_data + "&field8=";
+      post_data = post_data + String(sensorValues[RADIO_COUNTER], 0);
       Serial.println("Data to be send:");
       Serial.println(post_data);
       client.println("POST /update HTTP/1.1");
@@ -1283,11 +1313,6 @@ void sendDataIot_ThingSpeak_4()
       }
       client.stop();
       Serial.println("Packet successfully sent!");
-      // Clear control flags
-      for (int u = 0; u < controlCount; u++)
-      {
-        controlFlags[u] = false;
-      }
       watchdog_reset();
     }
   }

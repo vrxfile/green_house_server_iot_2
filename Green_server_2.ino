@@ -50,6 +50,10 @@ DHT dht22_1(DHT22_PIN1, DHT22);
 #define BUTTON_PIN2  A4
 #define BUTTON_PIN3  A5
 
+// Water level sensor
+#define WATER_SIG_PIN A8
+#define WATER_VCC_PIN A9
+
 // HC-SR04 distance sensor pins
 #define US1_trigPin 26
 #define US1_echoPin 27
@@ -98,6 +102,9 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 // Period of read MQ2 gas sensor
 #define MQ2_UPDATE_TIME 60000
 
+// Period of read water level sensor
+#define WATER_UPDATE_TIME 60000
+
 // Period of read HC-SR04 distance sensor
 #define HCSR04_UPDATE_TIME 3000
 
@@ -137,6 +144,9 @@ long timer_rec = 0;
 // Timer for MQ2 gas sensor
 long timer_mq2 = 0;
 
+// Timer for water level sensor
+long timer_water = 0;
+
 // Timer for HC-SR04 distance sensor
 long timer_hcsr04 = 0;
 
@@ -166,12 +176,12 @@ char thingworx_serviceName[] = "MGBotSetAllParameters";
 const int thingworx_port = 80;
 
 // IoT server sensor parameters
-#define sensorCount 44
+#define sensorCount 45
 char* sensorNames[] = {"soil_temp1", "soil_temp2", "soil_temp3", "soil_temp4", "soil_temp5", "soil_temp6", "soil_temp7", "soil_temp8", "soil_temp9"
                        , "soil_moisture1", "soil_moisture2", "soil_moisture3", "soil_moisture4", "soil_moisture5", "soil_moisture6", "soil_moisture7", "soil_moisture8", "soil_moisture9"
                        , "air_temp1", "air_temp2", "air_temp3", "air_hum1", "air_hum2", "air_hum3", "air_pressure1", "sun_light1", "mag_x", "mag_y", "mag_z"
                        , "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "device_temp", "gas_conc", "motion_detect"
-                       , "valve_timer1", "valve_timer2", "window_timer1", "lamps_timer1", "network_time", "radio_counter"
+                       , "valve_timer1", "valve_timer2", "window_timer1", "lamps_timer1", "network_time", "radio_counter", "water_level"
                       };
 float sensorValues[sensorCount] = {0};
 #define SOIL_TEMP1     0
@@ -218,6 +228,7 @@ float sensorValues[sensorCount] = {0};
 #define LAMPS_TIMER1   41
 #define NETWORK_TIME   42
 #define RADIO_COUNTER  43
+#define WATER_LEVEL    44
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
 
@@ -322,6 +333,11 @@ void setup()
   pinMode(BUTTON_PIN1, INPUT_PULLUP);
   pinMode(BUTTON_PIN2, INPUT_PULLUP);
   pinMode(BUTTON_PIN3, INPUT_PULLUP);
+
+  // Init water level sensor pins
+  pinMode(WATER_SIG_PIN, INPUT);
+  pinMode(WATER_VCC_PIN, OUTPUT);
+  digitalWrite(WATER_VCC_PIN, false);
 
   // Init relay outputs
   pinMode(RELAY_PIN1, OUTPUT);
@@ -435,6 +451,7 @@ void setup()
   readSensorACCGYRO_1(); watchdog_reset();
   readSensorMQ2(); watchdog_reset();
   readSensorHCSR04(); watchdog_reset();
+  readSensorWater(); watchdog_reset();
   lcd.clear();
   lcd.setCursor(0, 0); lcd_printstr("OUT_T = " + String(sensorValues[AIR_TEMP3], 1) + " *C");
   lcd.setCursor(0, 1); lcd_printstr("OUT_H = " + String(sensorValues[AIR_HUM3], 1) + " %");
@@ -516,6 +533,17 @@ void loop()
     Serial.println("MQ-2: " + String(sensorValues[GAS_CONC], 3) + " %");
     // Reset timer
     timer_mq2 = millis();
+  }
+
+  // Read water level sensor
+  if (millis() > timer_water + WATER_UPDATE_TIME)
+  {
+    // Read sensor
+    readSensorWater(); watchdog_reset();
+    // Print data to terminal
+    Serial.println("Water level: " + String(sensorValues[WATER_LEVEL], 3));
+    // Reset timer
+    timer_water = millis();
   }
 
   // Read HC-SR04 distance sensor
@@ -788,12 +816,17 @@ void loop()
         lcd.setCursor(0, 3); lcd_printstr("RCNT = " + String(sensorValues[RADIO_COUNTER], 0));
         watchdog_reset();
         break;
+      case 7:
+        lcd.clear();
+        lcd.setCursor(0, 0); lcd_printstr("WATER = " + String(controlTimers[WATER_LEVEL]));
+        watchdog_reset();
+        break;
       default:
         break;
     }
     // Change page number
     page_number++;
-    if (page_number > 6)
+    if (page_number > 7)
     {
       page_number = 0;
     }
@@ -988,6 +1021,15 @@ void readSensorMQ2()
 {
   sensorValues[GAS_CONC] = analogRead(MQ2_PIN) / 1023.0 * 100.0;
   sensorFlags[GAS_CONC] = true;
+}
+
+// Read water level sensor
+void readSensorWater()
+{
+  digitalWrite(WATER_VCC_PIN, true);
+  sensorValues[WATER_LEVEL] = analogRead(WATER_SIG_PIN) / 1023.0 * 100.0;
+  digitalWrite(WATER_VCC_PIN, false);
+  sensorFlags[WATER_LEVEL] = true;
 }
 
 // Read HC-SR04 distance sensor
@@ -1345,6 +1387,8 @@ void sendDataIot_ThingSpeak_5()
       post_data = post_data + String(sensorValues[ACC_Z], 1);
       post_data = post_data + "&field7=";
       post_data = post_data + String(sensorValues[GAS_CONC], 1);
+      post_data = post_data + "&field8=";
+      post_data = post_data + String(sensorValues[WATER_LEVEL], 1);
       Serial.println("Data to be send:");
       Serial.println(post_data);
       client.println("POST /update HTTP/1.1");

@@ -91,7 +91,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define RADIORESET_UPDATE_TIME 600000
 
 // Period of send data to IoT server
-#define IOT_UPDATE_TIME 300000
+#define IOT_UPDATE_TIME 5000
 
 // Period of read BMP085 pressure sensors
 #define PRESS_UPDATE_TIME 60000

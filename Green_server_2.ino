@@ -350,8 +350,8 @@ void setup()
   pinMode(RELAY_PIN2, OUTPUT);
   pinMode(RELAY_PIN3, OUTPUT);
   pinMode(RELAY_PIN4, OUTPUT);
-  digitalWrite(RELAY_PIN5, HIGH);
-  pinMode(RELAY_PIN5, OUTPUT);
+  //digitalWrite(RELAY_PIN5, HIGH);
+  //pinMode(RELAY_PIN5, OUTPUT);
 
   // Init motor outputs
   pinMode(PWMA, OUTPUT);
@@ -1524,14 +1524,17 @@ void sendDataIot_ThingWorx_1()
       watchdog_reset();
       StaticJsonBuffer<BUFF_LENGTH> jsonBuffer;
       JsonObject& json_array = jsonBuffer.parseObject(buff);
-      //pump_state = json_array["pump"];
-      //light_state = json_array["light"];
-      //window_state = json_array["roof"];
-      //Serial.println("Pump state:   " + String(pump_state));
-      //Serial.println("Light state:  " + String(light_state));
-      //Serial.println("Window state: " + String(window_state));
-      //Serial.println();
+      int valve_control1 = json_array["valve_control1"];
+      int valve_control2 = json_array["valve_control2"];
+      int window_control1 = json_array["window_control1"];
+      int lamps_control1 = json_array["lamps_control1"];
+      Serial.println("Input valve state: " + String(valve_control1));
+      Serial.println("Output valve state: " + String(valve_control2));
+      Serial.println("Window state: " + String(window_control1));
+      Serial.println("Lamps state: " + String(lamps_control1));
+      Serial.println();
       Serial.println("Packet successfully sent...");
+      Serial.println();
     }
   }
 }

@@ -91,7 +91,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define RADIORESET_UPDATE_TIME 600000
 
 // Period of send data to IoT server
-#define IOT_UPDATE_TIME 5000
+#define IOT_UPDATE_TIME 10000
 
 // Period of read BMP085 pressure sensors
 #define PRESS_UPDATE_TIME 60000
@@ -252,6 +252,16 @@ int controlTimers[controlCount] = {0};
 // Counters for control devices
 #define MAX_CONTROL_COUNT 50
 int controlCounters[controlCount] = {0};
+
+// Control states from ThingWorx
+int valve_control1 = 0;
+int valve_control2 = 0;
+int window_control1 = 0;
+int lamps_control1 = 0;
+int old_valve_control1 = 0;
+int old_valve_control2 = 0;
+int old_window_control1 = 0;
+int old_lamps_control1 = 0;
 
 // Addresses of radio sensors
 #define MIN_RADIO_ADDR 1
@@ -1524,16 +1534,37 @@ void sendDataIot_ThingWorx_1()
       watchdog_reset();
       StaticJsonBuffer<BUFF_LENGTH> jsonBuffer;
       JsonObject& json_array = jsonBuffer.parseObject(buff);
-      int valve_control1 = json_array["valve_control1"];
-      int valve_control2 = json_array["valve_control2"];
-      int window_control1 = json_array["window_control1"];
-      int lamps_control1 = json_array["lamps_control1"];
+      valve_control1 = json_array["valve_control1"];
+      valve_control2 = json_array["valve_control2"];
+      window_control1 = json_array["window_control1"];
+      lamps_control1 = json_array["lamps_control1"];
       Serial.println("Input valve state: " + String(valve_control1));
       Serial.println("Output valve state: " + String(valve_control2));
       Serial.println("Window state: " + String(window_control1));
       Serial.println("Lamps state: " + String(lamps_control1));
       Serial.println();
-      Serial.println("Packet successfully sent...");
+      // Control devices (only when state changes)
+      if (lamps_control1 != old_lamps_control1)
+      {
+        Serial.println("Lamps state has been changed");
+        if (lamps_control1)
+        {
+          controlTimers[LAMP_POWER1] = 3600;
+          sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
+          sensorFlags[LAMPS_TIMER1] = true;
+        }
+        else
+        {
+          controlTimers[LAMP_POWER1] = 0;
+          sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
+          sensorFlags[LAMPS_TIMER1] = false;
+        }
+      }
+      old_valve_control1 = valve_control1;
+      old_valve_control2 = valve_control2;
+      old_window_control1 = window_control1;
+      old_lamps_control1 = lamps_control1;
+      Serial.println("Packet successfully sent!");
       Serial.println();
     }
   }

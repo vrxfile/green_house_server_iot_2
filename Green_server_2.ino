@@ -10,6 +10,7 @@
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_ADXL345_U.h>
 #include <Adafruit_HMC5883_U.h>
+#include <Servo.h>
 
 // Minimum soil moisture constant
 #define MIN_SOIL_MOISTURE 30.0
@@ -22,12 +23,17 @@
 #define RELAY_PIN2   23
 #define RELAY_PIN3   24
 #define RELAY_PIN4   25
+#define RELAY_PIN5   38
 
 // Motor outputs
 #define PWMA 4
 #define DIRA 5
 #define PWMB 6
 #define DIRB 7
+
+// Servo motor output
+#define SERVO_PIN1 39
+Servo servo_1;
 
 // 433 MHz receiver parameters and vars
 #define RECEIVER_PIN 3
@@ -344,12 +350,17 @@ void setup()
   pinMode(RELAY_PIN2, OUTPUT);
   pinMode(RELAY_PIN3, OUTPUT);
   pinMode(RELAY_PIN4, OUTPUT);
+  digitalWrite(RELAY_PIN5, HIGH);
+  pinMode(RELAY_PIN5, OUTPUT);
 
   // Init motor outputs
   pinMode(PWMA, OUTPUT);
   pinMode(PWMB, OUTPUT);
   pinMode(DIRA, OUTPUT);
   pinMode(DIRB, OUTPUT);
+
+  // Init servo motor output
+  servo_1.attach(SERVO_PIN1);
 
   // Timer 3 interrupt (for custom WatchDog)
   noInterrupts();           // disable all interrupts

@@ -90,8 +90,11 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 // Period of reset flags for radio sensors
 #define RADIORESET_UPDATE_TIME 600000
 
-// Period of send data to IoT server
-#define IOT_UPDATE_TIME 10000
+// Period of send data to ThingSpeak IoT server
+#define IOT_TS_UPDATE_TIME 300000
+
+// Period of send data to ThingWorx IoT server
+#define IOT_TW_UPDATE_TIME 10000
 
 // Period of read BMP085 pressure sensors
 #define PRESS_UPDATE_TIME 60000
@@ -141,8 +144,11 @@ long timer_lcd = 0;
 // Timer for terminal print
 long timer_term = 0;
 
-// Timer for IoT server
-long timer_iot = 0;
+// Timer for ThingSpeak IoT server
+long timer_ts_iot = 0;
+
+// Timer for ThingWorx IoT server
+long timer_tw_iot = 0;
 
 // Timer for 433 MHz receiver
 long timer_rec = 0;
@@ -865,15 +871,34 @@ void loop()
     timer_term = millis();
   }
 
-  // Send data to IoT servers and measure send data time
-  if (millis() > timer_iot + IOT_UPDATE_TIME)
+  // Send data to ThingWorx IoT server
+  if (millis() > timer_tw_iot + IOT_TW_UPDATE_TIME)
+  {
+    // Print message to LCD
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd_printstr("Sending data 1...");
+    lcd.setCursor(0, 1); lcd_printstr("Please wait...");
+    lcd.setCursor(0, 2); lcd_printstr("0%");
+    watchdog_reset();
+    // Send data to ThingWorx and receive control packets
+    sendDataIot_ThingWorx_1();
+    watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("100%");
+    lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
+    watchdog_reset();
+    // Reset timer
+    timer_tw_iot = millis();
+  }
+
+  // Send data to ThingSpeak IoT server and measure send data time
+  if (millis() > timer_ts_iot + IOT_TS_UPDATE_TIME)
   {
     unsigned long beg_timer = 0;
     unsigned long end_timer = 0;
     float network_time = 0;
     // Print message to LCD
     lcd.clear();
-    lcd.setCursor(0, 0); lcd_printstr("Sending data...");
+    lcd.setCursor(0, 0); lcd_printstr("Sending data 2...");
     lcd.setCursor(0, 1); lcd_printstr("Please wait...");
     lcd.setCursor(0, 2); lcd_printstr("0%");
     watchdog_reset();
@@ -883,38 +908,31 @@ void loop()
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("15%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("20%"); watchdog_reset();
     // Send soil temperature sensors data
     beg_timer = millis();
     sendDataIot_ThingSpeak_2();
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("30%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("40%"); watchdog_reset();
     // Send soil moisture sensors data
     beg_timer = millis();
     sendDataIot_ThingSpeak_3();
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("45%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
     // Send controls data
     beg_timer = millis();
     sendDataIot_ThingSpeak_4();
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
+    lcd.setCursor(0, 2); lcd_printstr("80%"); watchdog_reset();
     // Send magnetic and seismo data
     beg_timer = millis();
     sendDataIot_ThingSpeak_5();
-    end_timer = millis() - beg_timer;
-    network_time = network_time + end_timer;
-    watchdog_reset();
-    lcd.setCursor(0, 2); lcd_printstr("75%");
-    // Send data to ThingWorx and receive control packets
-    beg_timer = millis();
-    sendDataIot_ThingWorx_1();
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
@@ -933,7 +951,7 @@ void loop()
     sensorValues[NETWORK_TIME] = network_time;
     sensorFlags[NETWORK_TIME] = true;
     // Reset timer
-    timer_iot = millis();
+    timer_ts_iot = millis();
   }
 
   // Hard reset of device

@@ -366,8 +366,8 @@ void setup()
   pinMode(RELAY_PIN2, OUTPUT);
   pinMode(RELAY_PIN3, OUTPUT);
   pinMode(RELAY_PIN4, OUTPUT);
-  //digitalWrite(RELAY_PIN5, HIGH);
-  //pinMode(RELAY_PIN5, OUTPUT);
+  digitalWrite(RELAY_PIN5, HIGH);
+  pinMode(RELAY_PIN5, OUTPUT);
 
   // Init motor outputs
   pinMode(PWMA, OUTPUT);
@@ -1565,7 +1565,7 @@ void sendDataIot_ThingWorx_1()
       // Input valve
       if (valve_control1 != old_valve_control1)
       {
-        Serial.println("Lamps state has been changed");
+        Serial.println("Input valve state has been changed");
         if (valve_control1)
         {
           controlTimers[VALVE_POWER1] = 3600;
@@ -1582,7 +1582,7 @@ void sendDataIot_ThingWorx_1()
       // Output valve
       if (valve_control2 != old_valve_control2)
       {
-        Serial.println("Lamps state has been changed");
+        Serial.println("Output valve state has been changed");
         if (valve_control2)
         {
           controlTimers[VALVE_POWER2] = 3600;
@@ -1599,7 +1599,7 @@ void sendDataIot_ThingWorx_1()
       // Window
       if (window_control1 != old_window_control1)
       {
-        Serial.println("Lamps state has been changed");
+        Serial.println("Window state has been changed");
         if (window_control1)
         {
           controlTimers[WINDOW_STATE1] = 3600;
@@ -1612,6 +1612,11 @@ void sendDataIot_ThingWorx_1()
           sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
           sensorFlags[WINDOW_TIMER1] = false;
         }
+        digitalWrite(RELAY_PIN5, LOW);
+      }
+      else
+      {
+        digitalWrite(RELAY_PIN5, HIGH);
       }
       // Lamps
       if (lamps_control1 != old_lamps_control1)
@@ -1670,6 +1675,14 @@ void controlDevices_1()
   digitalWrite(RELAY_PIN1, controlValues[VALVE_POWER1]);
   digitalWrite(RELAY_PIN2, controlValues[VALVE_POWER2]);
   digitalWrite(RELAY_PIN3, controlValues[LAMP_POWER1]);
+  if (controlValues[WINDOW_STATE1])
+  {
+    servo_1.write(0);
+  }
+  else
+  {
+    servo_1.write(180);
+  }
 }
 
 // Reset software watchdog timer

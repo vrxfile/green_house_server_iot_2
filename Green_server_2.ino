@@ -1677,11 +1677,11 @@ void controlDevices_1()
   digitalWrite(RELAY_PIN3, controlValues[LAMP_POWER1]);
   if (controlValues[WINDOW_STATE1])
   {
-    servo_1.write(0);
+    servo_1.write(180);
   }
   else
   {
-    servo_1.write(180);
+    servo_1.write(0);
   }
 }
 

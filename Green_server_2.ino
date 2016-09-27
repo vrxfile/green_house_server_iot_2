@@ -1562,6 +1562,58 @@ void sendDataIot_ThingWorx_1()
       Serial.println("Lamps state: " + String(lamps_control1));
       Serial.println();
       // Control devices (only when state changes)
+      // Input valve
+      if (valve_control1 != old_valve_control1)
+      {
+        Serial.println("Lamps state has been changed");
+        if (valve_control1)
+        {
+          controlTimers[VALVE_POWER1] = 3600;
+          sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+          sensorFlags[VALVE_TIMER1] = true;
+        }
+        else
+        {
+          controlTimers[VALVE_POWER1] = 0;
+          sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+          sensorFlags[VALVE_TIMER1] = false;
+        }
+      }
+      // Output valve
+      if (valve_control2 != old_valve_control2)
+      {
+        Serial.println("Lamps state has been changed");
+        if (valve_control2)
+        {
+          controlTimers[VALVE_POWER2] = 3600;
+          sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+          sensorFlags[VALVE_TIMER2] = true;
+        }
+        else
+        {
+          controlTimers[VALVE_POWER2] = 0;
+          sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+          sensorFlags[VALVE_TIMER2] = false;
+        }
+      }
+      // Window
+      if (window_control1 != old_window_control1)
+      {
+        Serial.println("Lamps state has been changed");
+        if (window_control1)
+        {
+          controlTimers[WINDOW_STATE1] = 3600;
+          sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
+          sensorFlags[WINDOW_TIMER1] = true;
+        }
+        else
+        {
+          controlTimers[WINDOW_STATE1] = 0;
+          sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
+          sensorFlags[WINDOW_TIMER1] = false;
+        }
+      }
+      // Lamps
       if (lamps_control1 != old_lamps_control1)
       {
         Serial.println("Lamps state has been changed");

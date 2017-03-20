@@ -1,3 +1,4 @@
+#define BLYNK_PRINT Serial
 #include <DHT.h>
 #include <L3G.h>
 #include <OneWire.h>
@@ -6,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <VirtualWire.h>
 #include <UIPEthernet.h>
+//#include <BlynkSimpleEthernet.h>
 #include <BH1750FVI.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_ADXL345_U.h>

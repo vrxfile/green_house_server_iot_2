@@ -346,38 +346,30 @@ void setup()
   LightSensor_1.setMode(Continuously_High_Resolution_Mode); watchdog_reset();
 
   // Init BMP085 sensor
-  if (!bmp.begin())
-  {
+  if (!bmp.begin()) {
     Serial.println("Could not find a valid BMP085 sensor!");
   }
   watchdog_reset();
 
   // Init L3G4200D sensor
-  if (!gyro.init())
-  {
+  if (!gyro.init()) {
     Serial.println("Failed to autodetect gyro type!");
-  }
-  else
-  {
+  } else {
     gyro.enableDefault();
   }
   watchdog_reset();
 
   // Init HMC5883L sensor
-  if (!mag.begin())
-  {
+  if (!mag.begin()) {
     Serial.println("Could not find a valid HMC5883L sensor!");
   }
   watchdog_reset();
 
   // Init ADXL345 sensor
-  if (!accel.begin())
-  {
+  if (!accel.begin()) {
     Serial.println("Could not find a valid ADXL345 sensor!");
-  }
-  else
-  {
-    accel.setRange(ADXL345_RANGE_16_G);
+  } else {
+    accel.setRange(ADXL345_RANGE_2_G);
     accel.setDataRate(ADXL345_DATARATE_200_HZ);
   }
   watchdog_reset();

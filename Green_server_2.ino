@@ -83,6 +83,8 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define RADIORESET_UPDATE_TIME 600000
 #define IOT_TS_UPDATE_TIME 300000
 #define IOT_TW_UPDATE_TIME 10000
+#define BLYNK_UPDATE_UPDATE_TIME 100
+#define BLYNK_SEND_UPDATE_TIME 10000
 #define PRESS_UPDATE_TIME 60000
 #define MAGNETIC_UPDATE_TIME 60000
 #define SEISMO_UPDATE_TIME 60000
@@ -103,6 +105,8 @@ long timer_lcd = 0;
 long timer_term = 0;
 long timer_ts_iot = 0;
 long timer_tw_iot = 0;
+long timer_blynk_update = 0;
+long timer_blynk_send = 0;
 long timer_rec = 0;
 long timer_mq2 = 0;
 long timer_water = 0;
@@ -118,7 +122,7 @@ long timer3_counter = 0;
 long wdt_timer = 0;
 
 // API key for Blynk
-char auth[] = "";
+char auth[] = "d85ad70c9e7e41d9b29e55b080000070";
 IPAddress blynk_ip(139, 59, 206, 133);
 
 // Thingworx IoT server network parameters
@@ -893,6 +897,35 @@ void loop()
     timer_ts_iot = millis();
   }
 
+  // Blynk update
+  if (millis() > timer_blynk_update + BLYNK_UPDATE_UPDATE_TIME)
+  {
+    // Update Blynk
+    Blynk.run();
+    // Reset timer
+    timer_blynk_update = millis();
+  }
+
+  // Send data to blynk
+  if (millis() > timer_blynk_send + BLYNK_SEND_UPDATE_TIME)
+  {
+    // Send data to blynk
+    Serial.print("Sending data to Blynk...");
+    Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(50); Serial.print(" 10%");
+    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(50); Serial.print(" 20%");
+    Blynk.virtualWrite(V2, sensorValues[AIR_TEMP3]); delay(50); Serial.print(" 30%");
+    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(50); Serial.print(" 40%");
+    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(50); Serial.print(" 50%");
+    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(50); Serial.print(" 60%");
+    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(50); Serial.print(" 70%");
+    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(50); Serial.print(" 80%");
+    Serial.println(" 100%");
+    Serial.println("Data successfully sent!");
+    Serial.println();
+    // Reset timer
+    timer_blynk_send = millis();
+  }
+
   // Hard reset of device
   if (millis() > timer_hreset + HRST_UPDATE_TIME)
   {
@@ -1629,6 +1662,52 @@ void watchdog_reset()
 {
   wdt_timer = 0;
 }
+
+#define SOIL_TEMP1     0
+#define SOIL_TEMP2     1
+#define SOIL_TEMP3     2
+#define SOIL_TEMP4     3
+#define SOIL_TEMP5     4
+#define SOIL_TEMP6     5
+#define SOIL_TEMP7     6
+#define SOIL_TEMP8     7
+#define SOIL_TEMP9     8
+#define SOIL_MOISTURE1 9
+#define SOIL_MOISTURE2 10
+#define SOIL_MOISTURE3 11
+#define SOIL_MOISTURE4 12
+#define SOIL_MOISTURE5 13
+#define SOIL_MOISTURE6 14
+#define SOIL_MOISTURE7 15
+#define SOIL_MOISTURE8 16
+#define SOIL_MOISTURE9 17
+#define AIR_TEMP1      18
+#define AIR_TEMP2      19
+#define AIR_TEMP3      20
+#define AIR_HUM1       21
+#define AIR_HUM2       22
+#define AIR_HUM3       23
+#define AIR_PRESSURE1  24
+#define SUN_LIGHT1     25
+#define MAG_X          26
+#define MAG_Y          27
+#define MAG_Z          28
+#define ACC_X          29
+#define ACC_Y          30
+#define ACC_Z          31
+#define GYR_X          32
+#define GYR_Y          33
+#define GYR_Z          34
+#define DEVICE_TEMP    35
+#define GAS_CONC       36
+#define MOTION_DETECT  37
+#define VALVE_TIMER1   38
+#define VALVE_TIMER2   39
+#define WINDOW_TIMER1  40
+#define LAMPS_TIMER1   41
+#define NETWORK_TIME   42
+#define RADIO_COUNTER  43
+#define WATER_LEVEL    44
 
 // Interrupt service routine for timer3 overflow
 ISR(TIMER3_OVF_vect)

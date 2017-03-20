@@ -7,7 +7,7 @@
 #include <ArduinoJson.h>
 #include <VirtualWire.h>
 #include <UIPEthernet.h>
-//#include <BlynkSimpleEthernet.h>
+#include <BlynkSimpleUIPEthernet.h>
 #include <BH1750FVI.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_ADXL345_U.h>
@@ -116,6 +116,10 @@ long timer_hreset = 0;
 #define MAX_WDT 2000
 long timer3_counter = 0;
 long wdt_timer = 0;
+
+// API key for Blynk
+char auth[] = "";
+IPAddress blynk_ip(139, 59, 206, 133);
 
 // Thingworx IoT server network parameters
 char thingworx_server[] = "cttit5402.cloud.thingworx.com";
@@ -382,21 +386,25 @@ void setup()
   lcd.clear(); watchdog_reset();
 
   // Init Ethernet ENC28J60
-  if (Ethernet.begin(mac) == 0)
-  {
-    Serial.println("Failed to configure Ethernet using DHCP");
-    Ethernet.begin(mac, ip, dnsServerIP, gateway, subnet);
-  }
-  watchdog_reset();
-  Serial.print("LocalIP:\t\t");
-  Serial.println(Ethernet.localIP());
-  Serial.print("SubnetMask:\t\t");
-  Serial.println(Ethernet.subnetMask());
-  Serial.print("GatewayIP:\t\t");
-  Serial.println(Ethernet.gatewayIP());
-  Serial.print("dnsServerIP:\t\t");
-  Serial.println(Ethernet.dnsServerIP());
-  Serial.println("");
+  //  if (Ethernet.begin(mac) == 0)
+  //  {
+  //    Serial.println("Failed to configure Ethernet using DHCP");
+  //    Ethernet.begin(mac, ip, dnsServerIP, gateway, subnet);
+  //  }
+  //  watchdog_reset();
+  //  Serial.print("LocalIP:\t\t");
+  //  Serial.println(Ethernet.localIP());
+  //  Serial.print("SubnetMask:\t\t");
+  //  Serial.println(Ethernet.subnetMask());
+  //  Serial.print("GatewayIP:\t\t");
+  //  Serial.println(Ethernet.gatewayIP());
+  //  Serial.print("dnsServerIP:\t\t");
+  //  Serial.println(Ethernet.dnsServerIP());
+  //  Serial.println("");
+  //  watchdog_reset();
+
+  // Init Blynk on ENC28J60
+  Blynk.begin(auth, blynk_ip, 8442);
   watchdog_reset();
 
   // One time read all sensors and print data

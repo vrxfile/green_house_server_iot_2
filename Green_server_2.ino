@@ -72,106 +72,42 @@ DHT dht22_1(DHT22_PIN1, DHT22);
 // LCD display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
-// Period of print data to LCD display
+// Period of software timers
 #define LCD_UPDATE_TIME 10000
-
-// Period of print data to terminal
 #define TERM_UPDATE_TIME 30000
-
-// Period of read BH1750 light sensor
 #define LIGHT_UPDATE_TIME 60000
-
-// Period of read DHT11 and DHT22 sensors
 #define DHT_UPDATE_TIME 60000
-
-// Period of read 433 MHz receiver
 #define REC_UPDATE_TIME 10
-
-// Period of reset flags for radio sensors
 #define RADIORESET_UPDATE_TIME 600000
-
-// Period of send data to ThingSpeak IoT server
 #define IOT_TS_UPDATE_TIME 300000
-
-// Period of send data to ThingWorx IoT server
 #define IOT_TW_UPDATE_TIME 10000
-
-// Period of read BMP085 pressure sensors
 #define PRESS_UPDATE_TIME 60000
-
-// Period of read HMC5883L magnetic sensors
 #define MAGNETIC_UPDATE_TIME 60000
-
-// Period of read accelerometer and gyroscope sensors
 #define SEISMO_UPDATE_TIME 60000
-
-// Period of automatic function control
 #define AUTO_UPDATE_TIME 1000
-
-// Period of read MQ2 gas sensor
 #define MQ2_UPDATE_TIME 60000
-
-// Period of read water level sensor
 #define WATER_UPDATE_TIME 60000
-
-// Period of read HC-SR04 distance sensor
 #define HCSR04_UPDATE_TIME 3000
-
-// Period of read buttons
 #define BUTTONS_UPDATE_TIME 1000
-
-// Period of autoreset
 #define HRST_UPDATE_TIME 7200000
 
-// Timer for DHT11 and DHT22 sensors
+// Software timer counters
 long timer_dht = 0;
-
-// Timer for BH1750 light sensor
 long timer_light = 0;
-
-// Timer for BMP085 pressure sensor
 long timer_press = 0;
-
-// Timer for HMC5883L magnetic sensor
 long timer_magnetic = 0;
-
-// Timer for accelerometer and gyroscope sensors
 long timer_seismo = 0;
-
-// Timer for LCD display
 long timer_lcd = 0;
-
-// Timer for terminal print
 long timer_term = 0;
-
-// Timer for ThingSpeak IoT server
 long timer_ts_iot = 0;
-
-// Timer for ThingWorx IoT server
 long timer_tw_iot = 0;
-
-// Timer for 433 MHz receiver
 long timer_rec = 0;
-
-// Timer for MQ2 gas sensor
 long timer_mq2 = 0;
-
-// Timer for water level sensor
 long timer_water = 0;
-
-// Timer for HC-SR04 distance sensor
 long timer_hcsr04 = 0;
-
-// Timer for buttons
 long timer_buttons = 0;
-
-// Timer for reset flags for radio sensors
 long timer_radioreset = 0;
-
-// Timer for automatic function control
 long timer_autocontrol = 0;
-
-// Timer for automatic reset
 long timer_hreset = 0;
 
 // Software watchdog 20 seconds
@@ -241,6 +177,7 @@ float sensorValues[sensorCount] = {0};
 #define NETWORK_TIME   42
 #define RADIO_COUNTER  43
 #define WATER_LEVEL    44
+
 // Read flags for radio sensors
 uint8_t sensorFlags[sensorCount] = {0};
 

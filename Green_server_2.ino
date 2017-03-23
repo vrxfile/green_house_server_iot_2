@@ -205,8 +205,9 @@ int controlTimers[controlCount] = {0};
 // Counters for control devices
 #define MAX_CONTROL_COUNT 50
 int controlCounters[controlCount] = {0};
+
 // Flag of first mesurement of network time
-int nw_time_flag = 0;
+int nw_time_flag = 1;
 
 // Control states from ThingWorx
 int valve_control1 = 0;
@@ -835,15 +836,20 @@ void loop()
     watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("60%"); watchdog_reset();
     // Send controls data
+    // Network data send time (first measurement)
+    if (nw_time_flag) {
+      sensorValues[NETWORK_TIME] = network_time + end_timer;
+      sensorFlags[NETWORK_TIME] = true;
+    }
     beg_timer = millis();
-    sendDataIot_ThingSpeak_4();
+    sendDataIot_ThingSpeak_5();
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
     lcd.setCursor(0, 2); lcd_printstr("80%"); watchdog_reset();
     // Send magnetic and seismo data
     beg_timer = millis();
-    sendDataIot_ThingSpeak_5();
+    sendDataIot_ThingSpeak_4();
     end_timer = millis() - beg_timer;
     network_time = network_time + end_timer;
     watchdog_reset();
@@ -860,6 +866,7 @@ void loop()
     // Network data send time
     sensorValues[NETWORK_TIME] = network_time;
     sensorFlags[NETWORK_TIME] = true;
+    nw_time_flag = 0;
     // Reset timer
     timer_ts_iot = millis();
   }

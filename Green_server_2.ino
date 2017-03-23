@@ -932,6 +932,70 @@ void loop()
   watchdog_reset();
 }
 
+// Input valve
+BLYNK_WRITE(V100)
+{
+  int ctl =  param.asInt();
+  if (ctl) {
+    controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 50;
+    sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+    sensorFlags[VALVE_TIMER1] = true;
+  }
+  else {
+    controlTimers[VALVE_POWER1] = 0;
+    sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+    sensorFlags[VALVE_TIMER1] = false;
+  }
+}
+
+// Output valve
+BLYNK_WRITE(V101)
+{
+  int ctl =  param.asInt();
+  if (ctl) {
+    controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 50;
+    sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+    sensorFlags[VALVE_TIMER2] = true;
+  }
+  else {
+    controlTimers[VALVE_POWER2] = 0;
+    sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+    sensorFlags[VALVE_TIMER2] = false;
+  }
+}
+
+// Window
+BLYNK_WRITE(V102)
+{
+  int ctl =  param.asInt();
+  if (ctl) {
+    controlTimers[WINDOW_STATE1] = controlTimers[WINDOW_STATE1] + 50;
+    sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
+    sensorFlags[WINDOW_TIMER1] = true;
+  }
+  else {
+    controlTimers[WINDOW_STATE1] = 0;
+    sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
+    sensorFlags[WINDOW_TIMER1] = false;
+  }
+}
+
+// Lamps
+BLYNK_WRITE(V103)
+{
+  int ctl =  param.asInt();
+  if (ctl) {
+    controlTimers[LAMP_POWER1] = controlTimers[LAMP_POWER1] + 50;
+    sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
+    sensorFlags[LAMPS_TIMER1] = true;
+  }
+  else {
+    controlTimers[LAMP_POWER1] = 0;
+    sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
+    sensorFlags[LAMPS_TIMER1] = false;
+  }
+}
+
 // Read DHT11 sensor #1
 void readSensorDHT11_1()
 {

@@ -75,25 +75,25 @@ DHT dht22_1(DHT22_PIN1, DHT22);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 // Period of software timers
-#define LCD_UPDATE_TIME 10000
-#define TERM_UPDATE_TIME 30000
-#define LIGHT_UPDATE_TIME 60000
-#define DHT_UPDATE_TIME 60000
-#define REC_UPDATE_TIME 10
-#define RADIORESET_UPDATE_TIME 600000
-#define IOT_TS_UPDATE_TIME 300000
-#define IOT_TW_UPDATE_TIME 10000
-#define BLYNK_UPDATE_UPDATE_TIME 100
-#define BLYNK_SEND_UPDATE_TIME 10000
-#define PRESS_UPDATE_TIME 60000
-#define MAGNETIC_UPDATE_TIME 60000
-#define SEISMO_UPDATE_TIME 60000
-#define AUTO_UPDATE_TIME 1000
-#define MQ2_UPDATE_TIME 60000
-#define WATER_UPDATE_TIME 60000
-#define HCSR04_UPDATE_TIME 3000
-#define BUTTONS_UPDATE_TIME 1000
-#define HRST_UPDATE_TIME 7200000
+#define LCD_UPDATE_TIME 10000         //old 10s
+#define TERM_UPDATE_TIME 10000        //old 30s
+#define LIGHT_UPDATE_TIME 10000       //old 60s
+#define DHT_UPDATE_TIME 10000         //old 60s
+#define REC_UPDATE_TIME 10            //old 10ms
+#define RADIORESET_UPDATE_TIME 600000 //old 10min
+#define IOT_TS_UPDATE_TIME 300000     //old 5min
+#define IOT_TW_UPDATE_TIME 300000     //old 10s
+#define BLYNK_UPDATE_UPDATE_TIME 100  //old 100ms
+#define BLYNK_SEND_UPDATE_TIME 10000  //old 10s
+#define PRESS_UPDATE_TIME 10000       //old 60s  
+#define MAGNETIC_UPDATE_TIME 10000    //old 60s
+#define SEISMO_UPDATE_TIME 10000      //old 60s
+#define AUTO_UPDATE_TIME 1000         //old 1s
+#define MQ2_UPDATE_TIME 10000         //old 60s
+#define WATER_UPDATE_TIME 10000       //old 60s
+#define HCSR04_UPDATE_TIME 5000       //old 3s
+#define BUTTONS_UPDATE_TIME 1000      //old 1s
+#define HRST_UPDATE_TIME 7200000      //old 2h
 
 // Software timer counters
 long timer_dht = 0;
@@ -116,8 +116,8 @@ long timer_radioreset = 0;
 long timer_autocontrol = 0;
 long timer_hreset = 0;
 
-// Software watchdog 20 seconds
-#define MAX_WDT 2000
+// Software watchdog 30 seconds
+#define MAX_WDT 3000
 long timer3_counter = 0;
 long wdt_timer = 0;
 
@@ -408,6 +408,7 @@ void setup()
   //  watchdog_reset();
 
   // Init Blynk on ENC28J60
+  //Blynk.begin(auth);
   Blynk.begin(auth, blynk_ip, 8442);
   watchdog_reset();
 

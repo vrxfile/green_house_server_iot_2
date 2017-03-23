@@ -883,14 +883,27 @@ void loop()
   if (millis() > timer_blynk_send + BLYNK_SEND_UPDATE_TIME) {
     // Send data to blynk
     Serial.print("Sending data to Blynk...");
-    Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(50); Serial.print(" 10%");
-    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(50); Serial.print(" 20%");
-    Blynk.virtualWrite(V2, sensorValues[AIR_TEMP3]); delay(50); Serial.print(" 30%");
-    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(50); Serial.print(" 40%");
-    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(50); Serial.print(" 50%");
-    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(50); Serial.print(" 60%");
-    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(50); Serial.print(" 70%");
-    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(50); Serial.print(" 80%");
+    Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(50); watchdog_reset(); Serial.print(" 10%");
+    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(50); watchdog_reset(); Serial.print(" 20%");
+    Blynk.virtualWrite(V2, sensorValues[AIR_TEMP3]); delay(50); watchdog_reset(); Serial.print(" 30%");
+    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(50); watchdog_reset(); Serial.print(" 40%");
+    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(50); watchdog_reset(); Serial.print(" 60%");
+    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(50); watchdog_reset(); Serial.print(" 70%");
+    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(50); watchdog_reset(); Serial.print(" 80%");
+    Blynk.virtualWrite(V8, sensorValues[SOIL_TEMP1]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V9, sensorValues[SOIL_TEMP2]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V10, sensorValues[SOIL_TEMP3]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V11, sensorValues[SOIL_MOISTURE1]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V12, sensorValues[SOIL_MOISTURE2]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V13, sensorValues[SOIL_MOISTURE3]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V14, sensorValues[DEVICE_TEMP]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V15, sensorValues[GAS_CONC]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V16, sensorValues[VALVE_TIMER1]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V17, sensorValues[VALVE_TIMER2]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V18, sensorValues[WINDOW_TIMER1]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V19, sensorValues[LAMPS_TIMER1]); delay(50); watchdog_reset(); Serial.print(" 50%");
+    Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(50); watchdog_reset(); Serial.print(" 50%");
     Serial.println(" 100%");
     Serial.println("Data successfully sent!");
     Serial.println();
@@ -950,16 +963,13 @@ void readSensorBMP085_1()
   float ttt = 0;
   sensors_event_t p_event;
   bmp.getEvent(&p_event);
-  if (p_event.pressure)
-  {
+  if (p_event.pressure) {
     sensorValues[AIR_PRESSURE1] = p_event.pressure * 7.5006 / 10;
     bmp.getTemperature(&ttt);
     sensorValues[DEVICE_TEMP] = ttt;
     sensorFlags[AIR_PRESSURE1] = true;
     sensorFlags[DEVICE_TEMP] = true;
-  }
-  else
-  {
+  } else {
     sensorFlags[AIR_PRESSURE1] = false;
     sensorFlags[DEVICE_TEMP] = false;
   }
@@ -1026,17 +1036,13 @@ void readSensorHCSR04()
   digitalWrite(US1_trigPin, LOW);
   duration = pulseIn(US1_echoPin, HIGH, 50000);
   distance = duration / 58.2;
-  if (distance >= maximumRange || distance <= minimumRange)
-  {
+  if (distance >= maximumRange || distance <= minimumRange) {
     distance = -1;
   }
   sensorValues[MOTION_DETECT] = distance;
-  if (distance < 1)
-  {
+  if (distance < 1) {
     sensorFlags[MOTION_DETECT] = false;
-  }
-  else
-  {
+  } else {
     sensorFlags[MOTION_DETECT] = true;
   }
 }
@@ -1633,52 +1639,6 @@ void watchdog_reset()
 {
   wdt_timer = 0;
 }
-
-#define SOIL_TEMP1     0
-#define SOIL_TEMP2     1
-#define SOIL_TEMP3     2
-#define SOIL_TEMP4     3
-#define SOIL_TEMP5     4
-#define SOIL_TEMP6     5
-#define SOIL_TEMP7     6
-#define SOIL_TEMP8     7
-#define SOIL_TEMP9     8
-#define SOIL_MOISTURE1 9
-#define SOIL_MOISTURE2 10
-#define SOIL_MOISTURE3 11
-#define SOIL_MOISTURE4 12
-#define SOIL_MOISTURE5 13
-#define SOIL_MOISTURE6 14
-#define SOIL_MOISTURE7 15
-#define SOIL_MOISTURE8 16
-#define SOIL_MOISTURE9 17
-#define AIR_TEMP1      18
-#define AIR_TEMP2      19
-#define AIR_TEMP3      20
-#define AIR_HUM1       21
-#define AIR_HUM2       22
-#define AIR_HUM3       23
-#define AIR_PRESSURE1  24
-#define SUN_LIGHT1     25
-#define MAG_X          26
-#define MAG_Y          27
-#define MAG_Z          28
-#define ACC_X          29
-#define ACC_Y          30
-#define ACC_Z          31
-#define GYR_X          32
-#define GYR_Y          33
-#define GYR_Z          34
-#define DEVICE_TEMP    35
-#define GAS_CONC       36
-#define MOTION_DETECT  37
-#define VALVE_TIMER1   38
-#define VALVE_TIMER2   39
-#define WINDOW_TIMER1  40
-#define LAMPS_TIMER1   41
-#define NETWORK_TIME   42
-#define RADIO_COUNTER  43
-#define WATER_LEVEL    44
 
 // Interrupt service routine for timer3 overflow
 ISR(TIMER3_OVF_vect)

@@ -117,7 +117,7 @@ long timer_autocontrol = 0;
 long timer_hreset = 0;
 
 // Software watchdog 30 seconds
-#define MAX_WDT 3000
+#define MAX_WDT 3000 //old 20s
 long timer3_counter = 0;
 long wdt_timer = 0;
 
@@ -205,6 +205,8 @@ int controlTimers[controlCount] = {0};
 // Counters for control devices
 #define MAX_CONTROL_COUNT 50
 int controlCounters[controlCount] = {0};
+// Flag of first mesurement of network time
+int nw_time_flag = 0;
 
 // Control states from ThingWorx
 int valve_control1 = 0;
@@ -339,7 +341,7 @@ void setup()
   interrupts();             // enable all interrupts
   watchdog_reset();
 
-  // Init receiver
+  // Init ZigBee receiver
   vw_set_rx_pin(RECEIVER_PIN);
   vw_set_tx_pin(TRANSMITTER_PIN);
   vw_set_ptt_pin(PTT_PIN);
@@ -436,8 +438,7 @@ void setup()
 void loop()
 {
   // Read DHT11 and DHT22 senors
-  if (millis() > timer_dht + DHT_UPDATE_TIME)
-  {
+  if (millis() > timer_dht + DHT_UPDATE_TIME) {
     // Read sensors
     readSensorDHT11_1(); watchdog_reset();
     readSensorDHT11_2(); watchdog_reset();
@@ -451,8 +452,7 @@ void loop()
   }
 
   // Read BH1750 light sensor
-  if (millis() > timer_light + LIGHT_UPDATE_TIME)
-  {
+  if (millis() > timer_light + LIGHT_UPDATE_TIME) {
     // Read sensor
     readSensorBH1750_1(); watchdog_reset();
     // Print data to terminal
@@ -462,8 +462,7 @@ void loop()
   }
 
   // Read BMP085 pressure sensor
-  if (millis() > timer_press + PRESS_UPDATE_TIME)
-  {
+  if (millis() > timer_press + PRESS_UPDATE_TIME) {
     // Read sensor
     readSensorBMP085_1(); watchdog_reset();
     // Print data to terminal
@@ -473,8 +472,7 @@ void loop()
   }
 
   // Read HMC5883L magnetic sensor
-  if (millis() > timer_magnetic + MAGNETIC_UPDATE_TIME)
-  {
+  if (millis() > timer_magnetic + MAGNETIC_UPDATE_TIME) {
     // Read sensor
     readSensorHMC5883L_1(); watchdog_reset();
     // Print data to terminal
@@ -484,8 +482,7 @@ void loop()
   }
 
   // Read accelerometer and gyroscope sensors
-  if (millis() > timer_seismo + SEISMO_UPDATE_TIME)
-  {
+  if (millis() > timer_seismo + SEISMO_UPDATE_TIME) {
     // Read sensor
     readSensorACCGYRO_1(); watchdog_reset();
     // Print data to terminal
@@ -496,8 +493,7 @@ void loop()
   }
 
   // Read MQ-2 gas sensor
-  if (millis() > timer_mq2 + MQ2_UPDATE_TIME)
-  {
+  if (millis() > timer_mq2 + MQ2_UPDATE_TIME) {
     // Read sensor
     readSensorMQ2(); watchdog_reset();
     // Print data to terminal
@@ -507,8 +503,7 @@ void loop()
   }
 
   // Read water level sensor
-  if (millis() > timer_water + WATER_UPDATE_TIME)
-  {
+  if (millis() > timer_water + WATER_UPDATE_TIME) {
     // Read sensor
     readSensorWater(); watchdog_reset();
     // Print data to terminal
@@ -518,13 +513,11 @@ void loop()
   }
 
   // Read HC-SR04 distance sensor
-  if (millis() > timer_hcsr04 + HCSR04_UPDATE_TIME)
-  {
+  if (millis() > timer_hcsr04 + HCSR04_UPDATE_TIME) {
     // Read sensor
     readSensorHCSR04(); watchdog_reset();
     // Detect object and switch on lamps
-    if ((sensorValues[MOTION_DETECT] < 50))
-    {
+    if ((sensorValues[MOTION_DETECT] < 50)) {
       // Increment lamps timer
       controlTimers[LAMP_POWER1] = 60;
       sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
@@ -543,22 +536,19 @@ void loop()
     // Read buttons
     readButtons(); watchdog_reset();
     // Increment timer of input valve
-    if ((buttonStates[BUTTON1] == 0))
-    {
+    if ((buttonStates[BUTTON1] == 0)) {
       controlTimers[VALVE_POWER1] = controlTimers[VALVE_POWER1] + 50;
       sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
       sensorFlags[VALVE_TIMER1] = true;
     }
     // Increment timer of output valve
-    if ((buttonStates[BUTTON2] == 0))
-    {
+    if ((buttonStates[BUTTON2] == 0)) {
       controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 50;
       sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
       sensorFlags[VALVE_TIMER2] = true;
     }
     // Switch off all valves
-    if ((buttonStates[BUTTON3] == 0))
-    {
+    if ((buttonStates[BUTTON3] == 0)) {
       controlTimers[VALVE_POWER1] = 0;
       controlTimers[VALVE_POWER2] = 0;
       sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
@@ -568,8 +558,7 @@ void loop()
     }
     watchdog_reset();
     // Print control device timers
-    if ((buttonStates[BUTTON1] == 0) || (buttonStates[BUTTON2] == 0) || (buttonStates[BUTTON3] == 0))
-    {
+    if ((buttonStates[BUTTON1] == 0) || (buttonStates[BUTTON2] == 0) || (buttonStates[BUTTON3] == 0)) {
       // Print control timers to LCD
       lcd.clear();
       lcd.setCursor(0, 0); lcd_printstr("VALVE1 = " + String(controlTimers[VALVE_POWER1]));
@@ -585,11 +574,9 @@ void loop()
   }
 
   // Reset flags of radio sensors
-  if (millis() > timer_radioreset + RADIORESET_UPDATE_TIME)
-  {
+  if (millis() > timer_radioreset + RADIORESET_UPDATE_TIME) {
     // Reset flags
-    for (int u = 0; u < sensorCount; u++)
-    {
+    for (int u = 0; u < sensorCount; u++) {
       sensorFlags[u] = false;
     }
     watchdog_reset();
@@ -598,8 +585,7 @@ void loop()
   }
 
   // Automatic function control
-  if (millis() > timer_autocontrol + AUTO_UPDATE_TIME)
-  {
+  if (millis() > timer_autocontrol + AUTO_UPDATE_TIME) {
     // Run automatic function control
     controlDevices_1(); watchdog_reset();
     // Reset timer
@@ -607,23 +593,19 @@ void loop()
   }
 
   // Read 433 MHz receiver
-  if (millis() > timer_rec + REC_UPDATE_TIME)
-  {
+  if (millis() > timer_rec + REC_UPDATE_TIME) {
     uint8_t rec_buf[VW_MAX_MESSAGE_LEN];
     uint8_t rec_buflen = VW_MAX_MESSAGE_LEN;
-    if (vw_get_message(rec_buf, &rec_buflen))
-    {
+    if (vw_get_message(rec_buf, &rec_buflen)) {
       digitalWrite(LED_PIN, HIGH);
       Serial.print("Received: ");
-      for (int i = 0; i < rec_buflen; i++)
-      {
+      for (int i = 0; i < rec_buflen; i++) {
         Serial.print((char)rec_buf[i]);
       }
       Serial.println();
       watchdog_reset();
       // Decrypt parameters from JSON packet
-      for (int i = 0; i < rec_buflen; i++)
-      {
+      for (int i = 0; i < rec_buflen; i++) {
         buff[i] = (char)rec_buf[i];
       }
       buff[rec_buflen] = 0x00;
@@ -634,20 +616,16 @@ void loop()
       float sensor_moisture = json_array["M"];
       float sensor_temperature = json_array["T"];
       watchdog_reset();
-      if ((sensor_addr >= MIN_RADIO_ADDR) && (sensor_addr <= MAX_RADIO_ADDR))
-      {
+      if ((sensor_addr >= MIN_RADIO_ADDR) && (sensor_addr <= MAX_RADIO_ADDR)) {
         Serial.println("Node address: " + String(sensor_addr));
         Serial.println("Sensor type: " + String(sensor_type));
         Serial.println("Moisture data: " + String(sensor_moisture, 1));
         Serial.println("Temperature data: " + String(sensor_temperature, 1));
         Serial.println();
-        if (sensor_type == 'T')
-        {
+        if (sensor_type == 'T') {
           sensorValues[sensor_addr - 1] = sensor_temperature;
           sensorFlags[sensor_addr - 1] = true;
-        }
-        else if (sensor_type == 'M')
-        {
+        } else if (sensor_type == 'M') {
           sensorValues[sensor_addr + 8] = sensor_moisture;
           sensorFlags[sensor_addr + 8] = true;
         }
@@ -655,28 +633,22 @@ void loop()
         // Automatic on output valve if minimum moisture
         float min_moisture = 100;
         int flag_moisture = false;
-        for (int u = SOIL_MOISTURE1; u <= SOIL_MOISTURE9; u++)
-        {
-          if (sensorFlags[u])
-          {
+        for (int u = SOIL_MOISTURE1; u <= SOIL_MOISTURE9; u++) {
+          if (sensorFlags[u]) {
             flag_moisture = true;
-            if (sensorValues[u] < min_moisture)
-            {
+            if (sensorValues[u] < min_moisture) {
               min_moisture = sensorValues[u];
             }
           }
         }
         watchdog_reset();
-        if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture))
-        {
+        if ((min_moisture < MIN_SOIL_MOISTURE) && (flag_moisture)) {
           controlCounters[VALVE_POWER2] = controlCounters[VALVE_POWER2] + 1;
-          if (controlCounters[VALVE_POWER2] <= MAX_CONTROL_COUNT)
-          {
+          if (controlCounters[VALVE_POWER2] <= MAX_CONTROL_COUNT) {
             controlTimers[VALVE_POWER2] = 300;
           }
         }
-        if ((min_moisture >= MIN_SOIL_MOISTURE) && (flag_moisture))
-        {
+        if ((min_moisture >= MIN_SOIL_MOISTURE) && (flag_moisture)) {
           controlCounters[VALVE_POWER2] = 0;
         }
         Serial.println("Min soil moisture: " + String(min_moisture, 1));
@@ -695,8 +667,7 @@ void loop()
   }
 
   // Print data to LCD
-  if (millis() > timer_lcd + LCD_UPDATE_TIME)
-  {
+  if (millis() > timer_lcd + LCD_UPDATE_TIME) {
     switch (page_number)
     {
       case 0:
@@ -797,8 +768,7 @@ void loop()
     }
     // Change page number
     page_number++;
-    if (page_number > 7)
-    {
+    if (page_number > 7) {
       page_number = 0;
     }
     watchdog_reset();
@@ -807,8 +777,7 @@ void loop()
   }
 
   // Print data to terminal
-  if (millis() > timer_term + TERM_UPDATE_TIME)
-  {
+  if (millis() > timer_term + TERM_UPDATE_TIME) {
     // Print all data to serial terminal
     printSerialData(); watchdog_reset();
     // Reset timer
@@ -816,8 +785,7 @@ void loop()
   }
 
   // Send data to ThingWorx IoT server
-  if (millis() > timer_tw_iot + IOT_TW_UPDATE_TIME)
-  {
+  if (millis() > timer_tw_iot + IOT_TW_UPDATE_TIME) {
     // Print message to LCD
     lcd.clear();
     lcd.setCursor(0, 0); lcd_printstr("Sending data 1...");
@@ -835,8 +803,7 @@ void loop()
   }
 
   // Send data to ThingSpeak IoT server and measure send data time
-  if (millis() > timer_ts_iot + IOT_TS_UPDATE_TIME)
-  {
+  if (millis() > timer_ts_iot + IOT_TS_UPDATE_TIME) {
     unsigned long beg_timer = 0;
     unsigned long end_timer = 0;
     float network_time = 0;
@@ -884,8 +851,7 @@ void loop()
     lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
     watchdog_reset();
     // Clear control flags
-    for (int u = 0; u < controlCount; u++)
-    {
+    for (int u = 0; u < controlCount; u++) {
       controlFlags[u] = false;
     }
     // Clear radio packets counter
@@ -899,8 +865,7 @@ void loop()
   }
 
   // Blynk update
-  if (millis() > timer_blynk_update + BLYNK_UPDATE_UPDATE_TIME)
-  {
+  if (millis() > timer_blynk_update + BLYNK_UPDATE_UPDATE_TIME) {
     // Update Blynk
     Blynk.run();
     // Reset timer
@@ -908,8 +873,7 @@ void loop()
   }
 
   // Send data to blynk
-  if (millis() > timer_blynk_send + BLYNK_SEND_UPDATE_TIME)
-  {
+  if (millis() > timer_blynk_send + BLYNK_SEND_UPDATE_TIME) {
     // Send data to blynk
     Serial.print("Sending data to Blynk...");
     Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(50); Serial.print(" 10%");
@@ -928,8 +892,7 @@ void loop()
   }
 
   // Hard reset of device
-  if (millis() > timer_hreset + HRST_UPDATE_TIME)
-  {
+  if (millis() > timer_hreset + HRST_UPDATE_TIME) {
     Serial.println("Hard reset timeout!\n");
     while (1)
     {

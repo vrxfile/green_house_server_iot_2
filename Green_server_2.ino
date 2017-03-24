@@ -126,7 +126,7 @@ long wdt_timer = 0;
 // API key for Blynk
 char auth[] = "d85ad70c9e7e41d9b29e55b080000070";
 IPAddress blynk_ip(139, 59, 206, 133);
-#define BLYNK_SEND_INTERVAL 10 //old 50ms
+#define BLYNK_SEND_INTERVAL 20 //old 50ms
 
 // Thingworx IoT server network parameters
 char thingworx_server[] = "cttit5402.cloud.thingworx.com";
@@ -892,22 +892,26 @@ void loop()
     //watchdog_reset();
     Serial.print("Sending data to Blynk...");
     Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("0");
-    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("1");
+    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("0");
     Blynk.virtualWrite(V2, sensorValues[AIR_TEMP3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("1");
-    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("2");
-    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("3");
-    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("3");
-    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("4");
-    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("5");
-    Blynk.virtualWrite(V8, sensorValues[SOIL_TEMP1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("5");
-    Blynk.virtualWrite(V9, sensorValues[SOIL_TEMP2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("6");
-    Blynk.virtualWrite(V10, sensorValues[SOIL_TEMP3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("7");
+    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("1");
+    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("2");
+    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("2");
+    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("3");
+    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("3");
+    Blynk.virtualWrite(V8, sensorValues[SOIL_TEMP1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("4");
+    Blynk.virtualWrite(V9, sensorValues[SOIL_TEMP2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("4");
+    Blynk.virtualWrite(V10, sensorValues[SOIL_TEMP3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("5");
     //lcd.setCursor(0, 2); lcd_printstr("50%"); watchdog_reset();
-    Blynk.virtualWrite(V11, sensorValues[SOIL_MOISTURE1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("7");
-    Blynk.virtualWrite(V12, sensorValues[SOIL_MOISTURE2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("8");
-    Blynk.virtualWrite(V13, sensorValues[SOIL_MOISTURE3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("8");
-    Blynk.virtualWrite(V14, sensorValues[DEVICE_TEMP]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("9");
-    Blynk.virtualWrite(V15, sensorValues[GAS_CONC]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("9");
+    Blynk.virtualWrite(V11, sensorValues[SOIL_MOISTURE1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("5");
+    Blynk.virtualWrite(V12, sensorValues[SOIL_MOISTURE2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("6");
+    Blynk.virtualWrite(V13, sensorValues[SOIL_MOISTURE3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("6");
+    Blynk.virtualWrite(V14, sensorValues[DEVICE_TEMP]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("7");
+    Blynk.virtualWrite(V15, sensorValues[GAS_CONC]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("7");
+    Blynk.virtualWrite(V16, sensorValues[VALVE_TIMER1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("8");
+    Blynk.virtualWrite(V17, sensorValues[VALVE_TIMER2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("8");
+    Blynk.virtualWrite(V18, sensorValues[WINDOW_TIMER1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("9");
+    Blynk.virtualWrite(V19, sensorValues[LAMPS_TIMER1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("9");
     Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("!");
     Serial.println(" 100%");
     Serial.println("Data successfully sent!");
@@ -923,11 +927,21 @@ void loop()
   if (millis() > timer_blynk_send2 + BLYNK_SEND_UPDATE_TIME2) {
     // Send data to blynk
     Serial.print("Sending data to Blynk...");
-    Blynk.virtualWrite(V16, sensorValues[VALVE_TIMER1]); delay(10); watchdog_reset(); Serial.print("0");
-    Blynk.virtualWrite(V17, sensorValues[VALVE_TIMER2]); delay(10); watchdog_reset(); Serial.print("3");
-    Blynk.virtualWrite(V18, sensorValues[WINDOW_TIMER1]); delay(10); watchdog_reset(); Serial.print("6");
-    Blynk.virtualWrite(V19, sensorValues[LAMPS_TIMER1]); delay(10); watchdog_reset(); Serial.print("9");
-    Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(10); watchdog_reset(); Serial.print("!");
+    if (sensorValues[VALVE_TIMER1] > 0) {
+      Blynk.virtualWrite(V16, sensorValues[VALVE_TIMER1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset();
+    }
+    if (sensorValues[VALVE_TIMER2] > 0) {
+      Blynk.virtualWrite(V17, sensorValues[VALVE_TIMER2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset();
+    }
+    if (sensorValues[WINDOW_TIMER1] > 0) {
+      Blynk.virtualWrite(V18, sensorValues[WINDOW_TIMER1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset();
+    }
+    if (sensorValues[LAMPS_TIMER1] > 0) {
+      Blynk.virtualWrite(V19, sensorValues[LAMPS_TIMER1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset();
+    }
+    if ((sensorValues[VALVE_TIMER1] > 0) && (sensorValues[VALVE_TIMER2] > 0)) {
+      Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(BLYNK_SEND_INTERVAL); watchdog_reset();
+    }
     Serial.println(" 100%");
     Serial.println("Data successfully sent!");
     Serial.println();
@@ -956,11 +970,6 @@ BLYNK_WRITE(V100)
     sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
     sensorFlags[VALVE_TIMER1] = true;
   }
-  else {
-    controlTimers[VALVE_POWER1] = 0;
-    sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
-    sensorFlags[VALVE_TIMER1] = false;
-  }
 }
 
 // Output valve
@@ -971,11 +980,6 @@ BLYNK_WRITE(V101)
     controlTimers[VALVE_POWER2] = controlTimers[VALVE_POWER2] + 50;
     sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
     sensorFlags[VALVE_TIMER2] = true;
-  }
-  else {
-    controlTimers[VALVE_POWER2] = 0;
-    sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
-    sensorFlags[VALVE_TIMER2] = false;
   }
 }
 
@@ -988,11 +992,6 @@ BLYNK_WRITE(V102)
     sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
     sensorFlags[WINDOW_TIMER1] = true;
   }
-  else {
-    controlTimers[WINDOW_STATE1] = 0;
-    sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
-    sensorFlags[WINDOW_TIMER1] = false;
-  }
 }
 
 // Lamps
@@ -1004,7 +1003,22 @@ BLYNK_WRITE(V103)
     sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
     sensorFlags[LAMPS_TIMER1] = true;
   }
-  else {
+}
+
+// Power off
+BLYNK_WRITE(V110)
+{
+  int ctl =  param.asInt();
+  if (ctl) {
+    controlTimers[VALVE_POWER1] = 0;
+    sensorValues[VALVE_TIMER1] = controlTimers[VALVE_POWER1];
+    sensorFlags[VALVE_TIMER1] = false;
+    controlTimers[VALVE_POWER2] = 0;
+    sensorValues[VALVE_TIMER2] = controlTimers[VALVE_POWER2];
+    sensorFlags[VALVE_TIMER2] = false;
+    controlTimers[WINDOW_STATE1] = 0;
+    sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
+    sensorFlags[WINDOW_TIMER1] = false;
     controlTimers[LAMP_POWER1] = 0;
     sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
     sensorFlags[LAMPS_TIMER1] = false;

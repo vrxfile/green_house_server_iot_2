@@ -84,7 +84,8 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define IOT_TS_UPDATE_TIME 300000     //old 5min
 #define IOT_TW_UPDATE_TIME 300000     //old 10s
 #define BLYNK_UPDATE_UPDATE_TIME 100  //old 100ms
-#define BLYNK_SEND_UPDATE_TIME 10000  //old 10s
+#define BLYNK_SEND_UPDATE_TIME1 10000 //old 10s
+#define BLYNK_SEND_UPDATE_TIME2 1000  //old 1s
 #define PRESS_UPDATE_TIME 10000       //old 60s  
 #define MAGNETIC_UPDATE_TIME 10000    //old 60s
 #define SEISMO_UPDATE_TIME 10000      //old 60s
@@ -106,7 +107,8 @@ long timer_term = 0;
 long timer_ts_iot = 0;
 long timer_tw_iot = 0;
 long timer_blynk_update = 0;
-long timer_blynk_send = 0;
+long timer_blynk_send1 = 0;
+long timer_blynk_send2 = 0;
 long timer_rec = 0;
 long timer_mq2 = 0;
 long timer_water = 0;
@@ -116,14 +118,15 @@ long timer_radioreset = 0;
 long timer_autocontrol = 0;
 long timer_hreset = 0;
 
-// Software watchdog 30 seconds
-#define MAX_WDT 3000 //old 20s
+// Software watchdog 60 seconds
+#define MAX_WDT 6000 //old 20s
 long timer3_counter = 0;
 long wdt_timer = 0;
 
 // API key for Blynk
 char auth[] = "d85ad70c9e7e41d9b29e55b080000070";
 IPAddress blynk_ip(139, 59, 206, 133);
+#define BLYNK_SEND_INTERVAL 10 //old 50ms
 
 // Thingworx IoT server network parameters
 char thingworx_server[] = "cttit5402.cloud.thingworx.com";
@@ -411,8 +414,8 @@ void setup()
   //  watchdog_reset();
 
   // Init Blynk on ENC28J60
-  //Blynk.begin(auth);
-  Blynk.begin(auth, blynk_ip, 8442);
+  Blynk.begin(auth);
+  //Blynk.begin(auth, blynk_ip, 8442);
   watchdog_reset();
 
   // One time read all sensors and print data
@@ -879,45 +882,57 @@ void loop()
     timer_blynk_update = millis();
   }
 
-  // Send data to blynk
-  if (millis() > timer_blynk_send + BLYNK_SEND_UPDATE_TIME) {
+  // Send sensors data to blynk
+  if (millis() > timer_blynk_send1 + BLYNK_SEND_UPDATE_TIME1) {
     // Send data to blynk
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd_printstr("Sending data 3...");
-    lcd.setCursor(0, 1); lcd_printstr("Please wait...");
-    lcd.setCursor(0, 2); lcd_printstr("0%");
-    watchdog_reset();
+    //lcd.clear();
+    //lcd.setCursor(0, 0); lcd_printstr("Sending data 3...");
+    //lcd.setCursor(0, 1); lcd_printstr("Please wait...");
+    //lcd.setCursor(0, 2); lcd_printstr("0%");
+    //watchdog_reset();
     Serial.print("Sending data to Blynk...");
-    Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(50); watchdog_reset(); Serial.print("0");
-    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(50); watchdog_reset(); Serial.print("0");
-    Blynk.virtualWrite(V2, sensorValues[AIR_TEMP3]); delay(50); watchdog_reset(); Serial.print("1");
-    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(50); watchdog_reset(); Serial.print("1");
-    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(50); watchdog_reset(); Serial.print("2");
-    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(50); watchdog_reset(); Serial.print("2");
-    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(50); watchdog_reset(); Serial.print("3");
-    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(50); watchdog_reset(); Serial.print("3");
-    Blynk.virtualWrite(V8, sensorValues[SOIL_TEMP1]); delay(50); watchdog_reset(); Serial.print("4");
-    Blynk.virtualWrite(V9, sensorValues[SOIL_TEMP2]); delay(50); watchdog_reset(); Serial.print("4");
-    Blynk.virtualWrite(V10, sensorValues[SOIL_TEMP3]); delay(50); watchdog_reset(); Serial.print("5");
-    lcd.setCursor(0, 2); lcd_printstr("50%"); watchdog_reset();
-    Blynk.virtualWrite(V11, sensorValues[SOIL_MOISTURE1]); delay(50); watchdog_reset(); Serial.print("5");
-    Blynk.virtualWrite(V12, sensorValues[SOIL_MOISTURE2]); delay(50); watchdog_reset(); Serial.print("6");
-    Blynk.virtualWrite(V13, sensorValues[SOIL_MOISTURE3]); delay(50); watchdog_reset(); Serial.print("6");
-    Blynk.virtualWrite(V14, sensorValues[DEVICE_TEMP]); delay(50); watchdog_reset(); Serial.print("7");
-    Blynk.virtualWrite(V15, sensorValues[GAS_CONC]); delay(50); watchdog_reset(); Serial.print("7");
-    Blynk.virtualWrite(V16, sensorValues[VALVE_TIMER1]); delay(50); watchdog_reset(); Serial.print("8");
-    Blynk.virtualWrite(V17, sensorValues[VALVE_TIMER2]); delay(50); watchdog_reset(); Serial.print("8");
-    Blynk.virtualWrite(V18, sensorValues[WINDOW_TIMER1]); delay(50); watchdog_reset(); Serial.print("9");
-    Blynk.virtualWrite(V19, sensorValues[LAMPS_TIMER1]); delay(50); watchdog_reset(); Serial.print("9");
-    Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(50); watchdog_reset(); Serial.print("!");
+    Blynk.virtualWrite(V0, sensorValues[AIR_TEMP1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("0");
+    Blynk.virtualWrite(V1, sensorValues[AIR_TEMP2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("1");
+    Blynk.virtualWrite(V2, sensorValues[AIR_TEMP3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("1");
+    Blynk.virtualWrite(V3, sensorValues[AIR_HUM1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("2");
+    Blynk.virtualWrite(V4, sensorValues[AIR_HUM2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("3");
+    Blynk.virtualWrite(V5, sensorValues[AIR_HUM3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("3");
+    Blynk.virtualWrite(V6, sensorValues[AIR_PRESSURE1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("4");
+    Blynk.virtualWrite(V7, sensorValues[SUN_LIGHT1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("5");
+    Blynk.virtualWrite(V8, sensorValues[SOIL_TEMP1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("5");
+    Blynk.virtualWrite(V9, sensorValues[SOIL_TEMP2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("6");
+    Blynk.virtualWrite(V10, sensorValues[SOIL_TEMP3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("7");
+    //lcd.setCursor(0, 2); lcd_printstr("50%"); watchdog_reset();
+    Blynk.virtualWrite(V11, sensorValues[SOIL_MOISTURE1]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("7");
+    Blynk.virtualWrite(V12, sensorValues[SOIL_MOISTURE2]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("8");
+    Blynk.virtualWrite(V13, sensorValues[SOIL_MOISTURE3]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("8");
+    Blynk.virtualWrite(V14, sensorValues[DEVICE_TEMP]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("9");
+    Blynk.virtualWrite(V15, sensorValues[GAS_CONC]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("9");
+    Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(BLYNK_SEND_INTERVAL); watchdog_reset(); Serial.print("!");
     Serial.println(" 100%");
     Serial.println("Data successfully sent!");
     Serial.println();
-    lcd.setCursor(0, 2); lcd_printstr("100%");
-    lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
-    watchdog_reset();
+    //lcd.setCursor(0, 2); lcd_printstr("100%");
+    //lcd.setCursor(0, 3); lcd_printstr("Data sent OK!");
+    //watchdog_reset();
     // Reset timer
-    timer_blynk_send = millis();
+    timer_blynk_send1 = millis();
+  }
+
+  // Send timers data to blynk
+  if (millis() > timer_blynk_send2 + BLYNK_SEND_UPDATE_TIME2) {
+    // Send data to blynk
+    Serial.print("Sending data to Blynk...");
+    Blynk.virtualWrite(V16, sensorValues[VALVE_TIMER1]); delay(10); watchdog_reset(); Serial.print("0");
+    Blynk.virtualWrite(V17, sensorValues[VALVE_TIMER2]); delay(10); watchdog_reset(); Serial.print("3");
+    Blynk.virtualWrite(V18, sensorValues[WINDOW_TIMER1]); delay(10); watchdog_reset(); Serial.print("6");
+    Blynk.virtualWrite(V19, sensorValues[LAMPS_TIMER1]); delay(10); watchdog_reset(); Serial.print("9");
+    Blynk.virtualWrite(V20, sensorValues[WATER_LEVEL]); delay(10); watchdog_reset(); Serial.print("!");
+    Serial.println(" 100%");
+    Serial.println("Data successfully sent!");
+    Serial.println();
+    // Reset timer
+    timer_blynk_send2 = millis();
   }
 
   // Hard reset of device

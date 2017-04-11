@@ -95,7 +95,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define HCSR04_UPDATE_TIME 5000       //old 3s
 #define BUTTONS_UPDATE_TIME 1000      //old 1s
 #define HRST_UPDATE_TIME 7200000      //old 2h
-#define SERVO_UPDATE_TIME 10          //old 5s
+#define SERVO_UPDATE_TIME 15          //old 5s
 
 // Software timer counters
 long timer_dht = 0;
@@ -1758,6 +1758,11 @@ void controlDevices_1()
   digitalWrite(RELAY_PIN2, controlValues[VALVE_POWER2]);
   digitalWrite(RELAY_PIN3, controlValues[LAMP_POWER1]);
   // Power of servomotor timer
+  if ((controlTimers[WINDOW_STATE1] > 0) && (controlTimers[WINDOW_STATE1] < 5))
+  {
+    digitalWrite(RELAY_PIN5, LOW);
+    timer_servo = SERVO_UPDATE_TIME;
+  }
   timer_servo = timer_servo - 1;
   if (timer_servo <= 0)
   {

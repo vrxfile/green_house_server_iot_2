@@ -95,6 +95,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 #define HCSR04_UPDATE_TIME 5000       //old 3s
 #define BUTTONS_UPDATE_TIME 1000      //old 1s
 #define HRST_UPDATE_TIME 7200000      //old 2h
+#define SERVO_UPDATE_TIME 10          //old 5s
 
 // Software timer counters
 long timer_dht = 0;
@@ -117,6 +118,9 @@ long timer_buttons = 0;
 long timer_radioreset = 0;
 long timer_autocontrol = 0;
 long timer_hreset = 0;
+
+// Servo power timer
+long timer_servo = 0;
 
 // Software watchdog 60 seconds
 #define MAX_WDT 6000 //old 20s
@@ -995,6 +999,8 @@ BLYNK_WRITE(V102)
 {
   int ctl =  param.asInt();
   if (ctl) {
+    digitalWrite(RELAY_PIN5, LOW);
+    timer_servo = SERVO_UPDATE_TIME;
     controlTimers[WINDOW_STATE1] = controlTimers[WINDOW_STATE1] + 50;
     sensorValues[WINDOW_TIMER1] = controlTimers[WINDOW_STATE1];
     sensorFlags[WINDOW_TIMER1] = true;
@@ -1751,6 +1757,14 @@ void controlDevices_1()
   digitalWrite(RELAY_PIN1, controlValues[VALVE_POWER1]);
   digitalWrite(RELAY_PIN2, controlValues[VALVE_POWER2]);
   digitalWrite(RELAY_PIN3, controlValues[LAMP_POWER1]);
+  // Power of servomotor timer
+  timer_servo = timer_servo - 1;
+  if (timer_servo <= 0)
+  {
+    timer_servo = 0;
+    digitalWrite(RELAY_PIN5, HIGH);
+  }
+  // Window servo motor
   if (controlValues[WINDOW_STATE1])
   {
     servo_1.write(180);

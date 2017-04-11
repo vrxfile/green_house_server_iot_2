@@ -126,7 +126,7 @@ long wdt_timer = 0;
 // API key for Blynk
 char auth[] = "d85ad70c9e7e41d9b29e55b080000070";
 IPAddress blynk_ip(139, 59, 206, 133);
-#define BLYNK_SEND_INTERVAL 20 //old 50ms
+#define BLYNK_SEND_INTERVAL 30 //old 50ms
 
 // Thingworx IoT server network parameters
 char thingworx_server[] = "cttit5402.cloud.thingworx.com";
@@ -510,8 +510,15 @@ void loop()
   if (millis() > timer_water + WATER_UPDATE_TIME) {
     // Read sensor
     readSensorWater(); watchdog_reset();
+    // Detect full capacity and power off input valve
+    if ((sensorValues[WATER_LEVEL] < 20) && (sensorFlags[WATER_LEVEL] == true)) {
+      controlTimers[VALVE_POWER1] = 0;
+      sensorValues[VALVE_TIMER1] = 0;
+      sensorFlags[VALVE_TIMER1] = false;
+      watchdog_reset();
+    }
     // Print data to terminal
-    Serial.println("Water level: " + String(sensorValues[WATER_LEVEL], 3));
+    Serial.println("Water level: " + String(sensorValues[WATER_LEVEL], 3) + " cm");
     // Reset timer
     timer_water = millis();
   }
@@ -521,7 +528,7 @@ void loop()
     // Read sensor
     readSensorHCSR04(); watchdog_reset();
     // Detect object and switch on lamps
-    if ((sensorValues[MOTION_DETECT] < 50)) {
+    if ((sensorValues[MOTION_DETECT] < 50) && (sensorFlags[MOTION_DETECT] == true)) {
       // Increment lamps timer
       controlTimers[LAMP_POWER1] = 60;
       sensorValues[LAMPS_TIMER1] = controlTimers[LAMP_POWER1];
@@ -764,7 +771,7 @@ void loop()
         break;
       case 7:
         lcd.clear();
-        lcd.setCursor(0, 0); lcd_printstr("WATER = " + String(controlTimers[WATER_LEVEL]));
+        lcd.setCursor(0, 0); lcd_printstr("WATER = " + String(controlTimers[WATER_LEVEL]) + " cm");
         watchdog_reset();
         break;
       default:
@@ -1120,10 +1127,28 @@ void readSensorMQ2()
 // Read water level sensor
 void readSensorWater()
 {
-  digitalWrite(WATER_VCC_PIN, true);
-  sensorValues[WATER_LEVEL] = analogRead(WATER_SIG_PIN) / 1023.0 * 100.0;
+  float duration = 0;
+  float distance = 0;
+  digitalWrite(WATER_VCC_PIN, true); delay(50);
+  pinMode(WATER_VCC_PIN, OUTPUT);
+  digitalWrite(WATER_VCC_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(WATER_VCC_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(WATER_VCC_PIN, LOW);
+  pinMode(WATER_VCC_PIN, INPUT);
+  duration = pulseIn(WATER_VCC_PIN, HIGH, 50000);
+  distance = duration / 58.2;
+  if (distance >= maximumRange || distance <= minimumRange) {
+    distance = -1;
+  }
+  sensorValues[WATER_LEVEL] = distance;
+  if (distance < 1) {
+    sensorFlags[WATER_LEVEL] = false;
+  } else {
+    sensorFlags[WATER_LEVEL] = true;
+  }
   digitalWrite(WATER_VCC_PIN, false);
-  sensorFlags[WATER_LEVEL] = true;
 }
 
 // Read HC-SR04 distance sensor
